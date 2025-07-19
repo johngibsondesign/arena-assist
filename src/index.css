@@ -161,6 +161,7 @@
     position: relative;
     z-index: 10;
     pointer-events: auto;
+    height: 24px; /* Make sure it has a height */
   }
 
   input[type="range"]::-webkit-slider-track {
@@ -168,6 +169,9 @@
     height: 8px;
     border-radius: 4px;
     border: none;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   input[type="range"]::-webkit-slider-thumb {
@@ -181,10 +185,13 @@
     border: 2px solid white;
     box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
     transition: all 0.2s ease;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
+    transform: translateY(-50%) scale(1.1);
     box-shadow: 0 4px 12px rgba(168, 85, 247, 0.5);
   }
 
@@ -204,6 +211,16 @@
     border: 2px solid white;
     box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
     transition: all 0.2s ease;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  /* Ensure range slider container visibility */
+  .slider-container {
+    background: rgba(55, 65, 81, 0.3);
+    border-radius: 8px;
+    padding: 4px;
+    position: relative;
   }
 
   /* Select dropdown styles */

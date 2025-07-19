@@ -65,17 +65,28 @@ class WebRTCService {
   // Enumerate available media devices
   async enumerateDevices(): Promise<MediaDevice[]> {
     try {
+      // First, request permissions to get device labels
+      console.log('Requesting media permissions for device enumeration...');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: true, 
+          video: false 
+        });
+        // Stop the stream immediately - we just needed permission
+        stream.getTracks().forEach(track => track.stop());
+        console.log('Got media permissions successfully');
+      } catch (permError) {
+        console.warn('Could not get media permissions:', permError);
+      }
+
       const devices = await navigator.mediaDevices.enumerateDevices();
       console.log('Raw devices from browser:', devices);
       
       // Process devices with better filtering
       this.availableDevices = devices
         .filter(device => {
-          // Include all devices that have an ID and are not generic defaults
+          // Include all devices that have an ID
           return device.deviceId && 
-                 device.deviceId !== 'default' && 
-                 device.deviceId !== 'communications' &&
-                 device.deviceId !== '' &&
                  (device.kind === 'audioinput' || device.kind === 'audiooutput'); // Only audio devices
         })
         .map(device => ({
@@ -85,37 +96,8 @@ class WebRTCService {
         }));
 
       console.log('Filtered devices:', this.availableDevices);
-
-      // If we don't have device labels (no permissions), request them
-      const hasLabels = this.availableDevices.some(d => d.label && !d.label.includes('('));
-      if (!hasLabels && this.availableDevices.length > 0) {
-        console.log('No device labels found, requesting permissions...');
-        try {
-          await this.requestDevicePermissions();
-          
-          // Re-enumerate after getting permissions
-          const retryDevices = await navigator.mediaDevices.enumerateDevices();
-          console.log('Devices after permission request:', retryDevices);
-          
-          this.availableDevices = retryDevices
-            .filter(device => {
-              return device.deviceId && 
-                     device.deviceId !== 'default' && 
-                     device.deviceId !== 'communications' &&
-                     device.deviceId !== '' &&
-                     (device.kind === 'audioinput' || device.kind === 'audiooutput');
-            })
-            .map(device => ({
-              deviceId: device.deviceId,
-              label: device.label || `${this.getDeviceTypeLabel(device.kind)} (${device.deviceId.slice(0, 8)})`,
-              kind: device.kind as 'audioinput' | 'audiooutput',
-            }));
-          
-          console.log('Devices after permission retry:', this.availableDevices);
-        } catch (permissionError) {
-          console.warn('Could not get device permissions:', permissionError);
-        }
-      }
+      console.log('Audio inputs found:', this.availableDevices.filter(d => d.kind === 'audioinput').length);
+      console.log('Audio outputs found:', this.availableDevices.filter(d => d.kind === 'audiooutput').length);
 
       // Set default devices if not selected
       if (!this.selectedAudioInputId && this.availableDevices.some(d => d.kind === 'audioinput')) {
@@ -130,21 +112,14 @@ class WebRTCService {
         console.log('Selected default audio output:', audioOutput);
       }
 
-      // Always trigger the callback, even if devices list is empty
-      console.log('Notifying UI of device changes...');
+      // Notify UI of device changes
       if (this.onDevicesChanged) {
-        this.onDevicesChanged([...this.availableDevices]); // Create new array to ensure React sees the change
+        this.onDevicesChanged(this.availableDevices);
       }
 
-      console.log('Final available devices:', this.availableDevices);
-      return [...this.availableDevices];
+      return this.availableDevices;
     } catch (error) {
-      console.error('Error enumerating devices:', error);
-      
-      // Still notify UI even on error
-      if (this.onDevicesChanged) {
-        this.onDevicesChanged([]);
-      }
+      console.error('Failed to enumerate devices:', error);
       return [];
     }
   }

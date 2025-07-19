@@ -68,8 +68,13 @@ export default function Voice() {
       try {
         setLoadingError(null);
         
-        // Initialize devices first
+        // Initialize devices first with better error handling
+        console.log('Enumerating devices...');
         const devices = await webrtcService.enumerateDevices();
+        console.log('Initial device enumeration completed:', devices.length, 'devices found');
+        
+        // Set devices in state
+        setAvailableDevices(devices);
         
         // Sync selected devices with WebRTC service
         setSelectedAudioInput(webrtcService.selectedAudioInputId);
@@ -114,8 +119,12 @@ export default function Voice() {
         };
         
         webrtcService.onDevicesChanged = (devices: any[]) => {
-          console.log('Devices updated:', devices);
+          console.log('Devices updated via callback:', devices.length, 'devices');
           setAvailableDevices([...devices]);
+          
+          // Update selected devices from WebRTC service if they've changed
+          setSelectedAudioInput(webrtcService.selectedAudioInputId);
+          setSelectedAudioOutput(webrtcService.selectedAudioOutputId);
         };
         
         setVoiceServicesLoaded(true);
@@ -202,15 +211,6 @@ export default function Voice() {
   const handleVolumeChange = (type: 'mic' | 'speaker', value: number) => {
     const newSettings = { ...settings };
     if (type === 'mic') {
-      newSettings.voice.micGain = value / 100;
-      webrtcService.setMicrophoneGain(value / 100);
-    } else {
-      newSettings.voice.speakerVolume = value / 100;
-      webrtcService.setSpeakerVolume(value / 100);
-    }
-    updateSettings(newSettings);
-  };
-
   const handleDeviceChange = async (deviceType: string, deviceId: string) => {
     console.log(`Changing ${deviceType} device to:`, deviceId);
     
@@ -222,6 +222,30 @@ export default function Voice() {
       await webrtcService.setAudioOutputDevice(deviceId);
     }
     
+    // Save device selection to settings
+    const newSettings = { ...settings };
+    if (deviceType === 'audioInput') {
+      newSettings.voice.selectedMicrophone = deviceId;
+    } else if (deviceType === 'audioOutput') {
+      newSettings.voice.selectedSpeaker = deviceId;
+    }
+    updateSettings(newSettings);
+  };
+
+  const refreshDevices = async () => {
+    console.log('Manually refreshing devices...');
+    try {
+      const devices = await webrtcService.enumerateDevices();
+      console.log('Manual refresh completed:', devices.length, 'devices found');
+      setAvailableDevices([...devices]);
+      
+      // Update selected devices
+      setSelectedAudioInput(webrtcService.selectedAudioInputId);
+      setSelectedAudioOutput(webrtcService.selectedAudioOutputId);
+    } catch (error) {
+      console.error('Failed to refresh devices:', error);
+    }
+  };
     // Save device selection to settings
     const newSettings = { ...settings };
     if (deviceType === 'audioInput') {
@@ -439,15 +463,6 @@ export default function Voice() {
         {/* Audio Controls */}
         <div className="mt-8 pt-6 border-t border-dark-600">
           <h4 className="text-lg font-semibold text-slate-200 mb-4">🔊 Audio Levels</h4>
-          
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-slate-300">Microphone Gain</label>
-                <span className="text-sm text-primary-400 font-mono">
-                  {Math.round(settings.voice.micGain * 100)}%
-                </span>
-              </div>
               <input
                 type="range"
                 min="0"
@@ -457,6 +472,18 @@ export default function Voice() {
                   console.log('Mic volume changed:', e.target.value);
                   handleVolumeChange('mic', parseInt(e.target.value));
                 }}
+                className="w-full h-6 bg-transparent rounded-lg appearance-none cursor-pointer"
+                style={{
+                  position: 'relative',
+                  zIndex: 1000,
+                  pointerEvents: 'auto',
+                  cursor: 'pointer',
+                  background: `linear-gradient(to right, rgba(168, 85, 247, 0.6) 0%, rgba(168, 85, 247, 0.6) ${settings.voice.micGain * 100}%, rgba(55, 65, 81, 0.5) ${settings.voice.micGain * 100}%, rgba(55, 65, 81, 0.5) 100%)`,
+                  borderRadius: '8px',
+                  padding: '2px'
+                }}
+              />  handleVolumeChange('mic', parseInt(e.target.value));
+                }}
                 className="w-full h-2 bg-dark-700 rounded-lg appearance-none cursor-pointer slider"
                 style={{
                   position: 'relative',
@@ -465,20 +492,23 @@ export default function Voice() {
                   cursor: 'pointer'
                 }}
               />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-slate-300">Speaker Volume</label>
-                <span className="text-sm text-primary-400 font-mono">
-                  {Math.round(settings.voice.speakerVolume * 100)}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0"
                 max="100"
                 value={settings.voice.speakerVolume * 100}
+                onChange={(e) => {
+                  console.log('Speaker volume changed:', e.target.value);
+                  handleVolumeChange('speaker', parseInt(e.target.value));
+                }}
+                className="w-full h-6 bg-transparent rounded-lg appearance-none cursor-pointer"
+                style={{
+                  position: 'relative',
+                  zIndex: 1000,
+                  pointerEvents: 'auto',
+                  cursor: 'pointer',
+                  background: `linear-gradient(to right, rgba(168, 85, 247, 0.6) 0%, rgba(168, 85, 247, 0.6) ${settings.voice.speakerVolume * 100}%, rgba(55, 65, 81, 0.5) ${settings.voice.speakerVolume * 100}%, rgba(55, 65, 81, 0.5) 100%)`,
+                  borderRadius: '8px',
+                  padding: '2px'
+                }}
+              />value={settings.voice.speakerVolume * 100}
                 onChange={(e) => {
                   console.log('Speaker volume changed:', e.target.value);
                   handleVolumeChange('speaker', parseInt(e.target.value));
@@ -532,12 +562,27 @@ export default function Voice() {
             {/* Audio Output */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                🔊 Speakers/Headphones ({getAudioOutputDevices().length} available)
-              </label>
-              <select
-                value={selectedAudioOutput}
-                onChange={(e) => {
-                  console.log('Audio output changed to:', e.target.value);
+            <div className="flex gap-2 mt-2">
+              <button 
+                onClick={refreshDevices}
+                className="px-3 py-1 bg-primary-500/20 text-primary-400 rounded text-xs hover:bg-primary-500/30 transition-colors"
+              >
+                🔄 Refresh Devices
+              </button>
+              <button 
+                onClick={() => {
+                  console.log('Current device state:');
+                  console.log('- Available devices:', availableDevices);
+                  console.log('- Selected input:', selectedAudioInput);
+                  console.log('- Selected output:', selectedAudioOutput);
+                  console.log('- WebRTC input:', webrtcService.selectedAudioInputId);
+                  console.log('- WebRTC output:', webrtcService.selectedAudioOutputId);
+                }}
+                className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs hover:bg-yellow-500/30 transition-colors"
+              >
+                📝 Debug Log
+              </button>
+            </div>sole.log('Audio output changed to:', e.target.value);
                   handleDeviceChange('audioOutput', e.target.value);
                 }}
                 className="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none cursor-pointer"
