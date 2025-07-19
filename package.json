@@ -60,11 +60,6 @@
       "node_modules/**/*",
       "package.json"
     ],
-    "publish": {
-      "provider": "github",
-      "owner": "johngibsondesign",
-      "repo": "arena-assist"
-    },
     "win": {
       "target": [
         {
