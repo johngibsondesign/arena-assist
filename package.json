@@ -1,6 +1,6 @@
 {
   "name": "arena-assist",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Desktop app for League of Legends Arena game mode assistance",
   "main": "dist/main.js",
   "scripts": {
