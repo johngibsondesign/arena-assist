@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabaseService, ArenaChampion, ArenaDuo, ArenaAugment, ArenaItem, ArenaSkillOrder } from '../services/supabaseService';
+import { supabaseService, ArenaChampion, ArenaDuo, ArenaAugment, ArenaItem, ArenaSkillOrder, PrismaticItem } from '../services/supabaseService';
 
 type ViewMode = 'list' | 'detail';
 
@@ -22,6 +22,7 @@ export default function Champions() {
   const [championAugments, setChampionAugments] = useState<ArenaAugment[]>([]);
   const [championItems, setChampionItems] = useState<ArenaItem[]>([]);
   const [championSkills, setChampionSkills] = useState<ArenaSkillOrder[]>([]);
+  const [championPrismaticItems, setChampionPrismaticItems] = useState<PrismaticItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   
   // Modal state for augment descriptions
@@ -60,17 +61,19 @@ export default function Champions() {
     try {
       console.log(`Loading details for champion: ${champion.name} (ID: ${champion.id})`);
       
-      const [augments, items, skills] = await Promise.all([
+      const [augments, items, skills, prismaticItems] = await Promise.all([
         supabaseService.getAugmentsByChampion(champion.id),
         supabaseService.getItemsByChampion(champion.id),
-        supabaseService.getSkillOrderByChampion(champion.id)
+        supabaseService.getSkillOrderByChampion(champion.id),
+        supabaseService.getPrismaticItemsByChampion(champion.id)
       ]);
       
-      console.log(`Loaded ${augments.length} augments, ${items.length} items, ${skills.length} skills for ${champion.name}`);
+      console.log(`Loaded ${augments.length} augments, ${items.length} items, ${skills.length} skills, ${prismaticItems.length} prismatic items for ${champion.name}`);
       
       setChampionAugments(augments);
       setChampionItems(items);
       setChampionSkills(skills);
+      setChampionPrismaticItems(prismaticItems);
     } catch (error) {
       console.error('Failed to load champion details:', error);
     } finally {
@@ -768,6 +771,83 @@ export default function Champions() {
                      </div>
                    ) : (
                      <p className="text-gray-400">No augment data available</p>
+                   )}
+                 </div>
+
+                 {/* Prismatic Items Tier List */}
+                 <div className="bg-gray-800 rounded-lg p-6">
+                   <h3 className="text-xl font-semibold text-primary-400 mb-4">Prismatic Item Tier List</h3>
+                   {championPrismaticItems.length > 0 ? (
+                     <div className="space-y-6">
+                       {['S', 'A', 'B', 'C', 'D'].map(tier => {
+                         const tierItems = championPrismaticItems.filter(item => item.tier_rank === tier);
+                         if (tierItems.length === 0) return null;
+                         
+                         const getTierColor = (tier: string) => {
+                           switch (tier) {
+                             case 'S': return { bg: 'bg-red-500/20', text: 'text-red-400', indicator: 'bg-red-400' };
+                             case 'A': return { bg: 'bg-orange-500/20', text: 'text-orange-400', indicator: 'bg-orange-400' };
+                             case 'B': return { bg: 'bg-yellow-500/20', text: 'text-yellow-400', indicator: 'bg-yellow-400' };
+                             case 'C': return { bg: 'bg-green-500/20', text: 'text-green-400', indicator: 'bg-green-400' };
+                             case 'D': return { bg: 'bg-blue-500/20', text: 'text-blue-400', indicator: 'bg-blue-400' };
+                             default: return { bg: 'bg-gray-500/20', text: 'text-gray-400', indicator: 'bg-gray-400' };
+                           }
+                         };
+                         
+                         const tierStyle = getTierColor(tier);
+                         
+                         return (
+                           <div key={tier}>
+                             <div className="flex items-center space-x-2 mb-3">
+                               <div className={`w-4 h-4 ${tierStyle.indicator} rounded-full`}></div>
+                               <h4 className={`text-lg font-semibold ${tierStyle.text}`}>Tier {tier}</h4>
+                               <span className="text-gray-400 text-sm">({tierItems.length})</span>
+                             </div>
+                             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                               {tierItems
+                                 .sort((a, b) => a.tier_position - b.tier_position)
+                                 .map((item) => (
+                                 <div 
+                                   key={item.id} 
+                                   className={`${tierStyle.bg} p-4 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors`}
+                                 >
+                                   <div className="flex items-start space-x-3">
+                                     <div className="text-sm font-bold text-gray-400 min-w-[2rem]">
+                                       #{item.tier_position}
+                                     </div>
+                                     
+                                     {item.image_url && (
+                                       <img
+                                         src={item.image_url}
+                                         alt={item.item_name}
+                                         className="w-12 h-12 rounded-lg"
+                                         onError={(e) => {
+                                           (e.target as HTMLImageElement).style.display = 'none';
+                                         }}
+                                       />
+                                     )}
+                                     
+                                     <div className="flex-1">
+                                       <h5 className="font-semibold text-white text-sm mb-1">{item.item_name}</h5>
+                                       {item.effect_summary && (
+                                         <p className="text-gray-300 text-xs mb-2">{item.effect_summary}</p>
+                                       )}
+                                       {item.usage_notes && (
+                                         <p className="text-gray-400 text-xs">
+                                           💡 {item.usage_notes}
+                                         </p>
+                                       )}
+                                     </div>
+                                   </div>
+                                 </div>
+                               ))}
+                             </div>
+                           </div>
+                         );
+                       })}
+                     </div>
+                   ) : (
+                     <p className="text-gray-400">No prismatic item tier data available</p>
                    )}
                  </div>
               </div>

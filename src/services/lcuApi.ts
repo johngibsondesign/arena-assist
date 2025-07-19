@@ -38,7 +38,8 @@ export interface CurrentSummoner {
 }
 
 export class LcuApiService {
-  private baseUrl = 'https://127.0.0.1:2999';
+  private baseUrl = 'https://127.0.0.1'; // Will be set dynamically
+  private port: number | null = null;
   private credentials: string | null = null;
   private isClientConnected = false;
   private pollingInterval: NodeJS.Timeout | null = null;
@@ -48,25 +49,75 @@ export class LcuApiService {
   public onGamePhaseChange: ((phase: string) => void) | null = null;
 
   constructor() {
-    this.detectCredentials();
+    this.detectClient();
     this.startPolling();
   }
 
-  private async detectCredentials(): Promise<void> {
+  private async detectClient(): Promise<void> {
     try {
-      // In a real implementation, this would read from the League client process
-      // For now, we'll simulate the detection
-      console.log('Detecting LCU credentials...');
+      console.log('Detecting League of Legends client...');
       
-      // Mock credentials - in reality these come from the League client command line
-      this.credentials = 'Basic ' + btoa('riot:' + 'mock-auth-token');
+      // Try to find the League client process and extract credentials
+      const clientInfo = await this.findLeagueProcess();
+      if (clientInfo) {
+        this.port = clientInfo.port;
+        this.credentials = clientInfo.credentials;
+        this.baseUrl = `https://127.0.0.1:${this.port}`;
+        console.log('League client detected on port:', this.port);
+      } else {
+        console.log('League client not found');
+      }
     } catch (error) {
-      console.error('Failed to detect LCU credentials:', error);
+      console.error('Failed to detect League client:', error);
+    }
+  }
+
+  private async findLeagueProcess(): Promise<{ port: number; credentials: string } | null> {
+    try {
+      // Use Node.js child_process to find League client
+      const { exec } = require('child_process');
+      
+      return new Promise((resolve) => {
+        // Look for LeagueClientUx.exe process on Windows
+        exec('wmic process where "name=\'LeagueClientUx.exe\'" get CommandLine /format:list', (error: any, stdout: string) => {
+          if (error) {
+            console.log('Could not find League client process:', error.message);
+            resolve(null);
+            return;
+          }
+
+          const lines = stdout.split('\n');
+          for (const line of lines) {
+            if (line.includes('--app-port=')) {
+              const portMatch = line.match(/--app-port=(\d+)/);
+              const tokenMatch = line.match(/--remoting-auth-token=([a-zA-Z0-9_-]+)/);
+              
+              if (portMatch && tokenMatch) {
+                const port = parseInt(portMatch[1]);
+                const token = tokenMatch[1];
+                const credentials = 'Basic ' + btoa(`riot:${token}`);
+                
+                resolve({ port, credentials });
+                return;
+              }
+            }
+          }
+          resolve(null);
+        });
+      });
+    } catch (error) {
+      console.error('Error finding League process:', error);
+      return null;
     }
   }
 
   private startPolling(): void {
     this.pollingInterval = setInterval(async () => {
+      // Periodically try to detect client if not connected
+      if (!this.credentials || !this.port) {
+        await this.detectClient();
+      }
+
       const wasConnected = this.isClientConnected;
       this.isClientConnected = await this.isClientRunning();
       
@@ -84,7 +135,19 @@ export class LcuApiService {
           // Ignore errors during polling
         }
       }
-    }, 2000); // Poll every 2 seconds
+    }, 5000); // Poll every 5 seconds
+  }
+
+  public async refreshClientDetection(): Promise<boolean> {
+    await this.detectClient();
+    return this.isClientConnected;
+  }
+
+  public getConnectionStatus(): { connected: boolean; port: number | null } {
+    return {
+      connected: this.isClientConnected,
+      port: this.port
+    };
   }
 
   public stopPolling(): void {
@@ -95,8 +158,8 @@ export class LcuApiService {
   }
 
   private async makeRequest(endpoint: string): Promise<any> {
-    if (!this.credentials) {
-      throw new Error('LCU credentials not available');
+    if (!this.credentials || !this.port) {
+      throw new Error('LCU credentials not available - League client not detected');
     }
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -107,15 +170,20 @@ export class LcuApiService {
     };
 
     try {
+      // In Electron, we need to handle self-signed certificates
+      const https = require('https');
+      const agent = new https.Agent({
+        rejectUnauthorized: false
+      });
+
       const response = await fetch(url, { 
         headers,
-        // Disable SSL verification for LCU
-        // @ts-ignore
-        rejectUnauthorized: false,
+        // @ts-ignore - Electron specific
+        agent: agent
       });
       
       if (!response.ok) {
-        throw new Error(`LCU API error: ${response.status}`);
+        throw new Error(`LCU API error: ${response.status} ${response.statusText}`);
       }
 
       return await response.json();
@@ -323,4 +391,7 @@ export class LcuApiService {
       isPolling = false;
     };
   }
-} 
+}
+
+// Create and export singleton instance
+export const lcuApiService = new LcuApiService(); 

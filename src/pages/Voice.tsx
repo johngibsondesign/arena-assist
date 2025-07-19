@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp, useSettings } from '../context/AppContext';
 import webrtcService from '../services/webrtcService';
 import { playerProfileService } from '../services/playerProfileService';
+import { lcuApiService, CurrentSummoner } from '../services/lcuApi';
 
 interface VoiceConnection {
   id: string;
@@ -59,6 +60,11 @@ export default function Voice() {
   // Teammate profile
   const [teammateProfile, setTeammateProfile] = useState<TeammateProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // League client states
+  const [leagueClientConnected, setLeagueClientConnected] = useState(false);
+  const [currentSummoner, setCurrentSummoner] = useState<CurrentSummoner | null>(null);
+  const [clientPort, setClientPort] = useState<number | null>(null);
 
   // Initialize WebRTC service
   useEffect(() => {
@@ -135,6 +141,53 @@ export default function Voice() {
       webrtcService.onDevicesChanged = null;
     };
   }, [state.game.summonerName, isMuted]);
+
+  // Initialize League client detection
+  useEffect(() => {
+    console.log('Setting up League client detection...');
+    
+    const updateClientStatus = (connected: boolean) => {
+      console.log('League client status changed:', connected);
+      setLeagueClientConnected(connected);
+      
+      if (connected) {
+        // Get current summoner info
+        lcuApiService.getCurrentSummoner().then(summoner => {
+          console.log('Current summoner:', summoner);
+          setCurrentSummoner(summoner);
+        }).catch(error => {
+          console.error('Failed to get current summoner:', error);
+        });
+        
+        // Get client port for display
+        const status = lcuApiService.getConnectionStatus();
+        setClientPort(status.port);
+      } else {
+        setCurrentSummoner(null);
+        setClientPort(null);
+      }
+    };
+    
+    // Set up callback
+    lcuApiService.onClientStatusChange = updateClientStatus;
+    
+    // Check initial status
+    const initialStatus = lcuApiService.getConnectionStatus();
+    setLeagueClientConnected(initialStatus.connected);
+    setClientPort(initialStatus.port);
+    
+    if (initialStatus.connected) {
+      lcuApiService.getCurrentSummoner().then(summoner => {
+        setCurrentSummoner(summoner);
+      }).catch(error => {
+        console.error('Failed to get initial summoner info:', error);
+      });
+    }
+    
+    return () => {
+      lcuApiService.onClientStatusChange = null;
+    };
+  }, []);
 
   const loadTeammateProfile = async (summonerName: string) => {
     console.log('Loading teammate profile for:', summonerName);
@@ -415,7 +468,41 @@ export default function Voice() {
               ) : (
                 <div className="space-y-3">
                   <p className="text-slate-400">Start an Arena game to enable voice chat</p>
-                  <p className="text-xs text-slate-500">League client not detected</p>
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${leagueClientConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+                    <p className="text-xs text-slate-500">
+                      {leagueClientConnected 
+                        ? `League client connected${clientPort ? ` (port ${clientPort})` : ''}`
+                        : 'League client not detected'
+                      }
+                    </p>
+                  </div>
+                  {currentSummoner && (
+                    <div className="flex items-center justify-center space-x-2 mt-2">
+                      <img
+                        src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${currentSummoner.profileIconId}.png`}
+                        alt="Profile"
+                        className="w-6 h-6 rounded-full"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/29.png';
+                        }}
+                      />
+                      <p className="text-xs text-primary-400">
+                        {currentSummoner.displayName} (Level {currentSummoner.summonerLevel})
+                      </p>
+                    </div>
+                  )}
+                  {!leagueClientConnected && (
+                    <button
+                      onClick={async () => {
+                        console.log('Refreshing League client detection...');
+                        await lcuApiService.refreshClientDetection();
+                      }}
+                      className="text-xs text-primary-400 hover:text-primary-300 underline"
+                    >
+                      🔄 Refresh Detection
+                    </button>
+                  )}
                 </div>
               )}
               

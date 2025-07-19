@@ -55,6 +55,19 @@ export interface ArenaItem {
   updated_at: string;
 }
 
+export interface PrismaticItem {
+  id: number;
+  champion_id: string;
+  item_name: string;
+  image_url: string;
+  tier_rank: 'S' | 'A' | 'B' | 'C' | 'D';
+  tier_position: number;
+  description?: string;
+  effect_summary?: string;
+  usage_notes?: string;
+  updated_at: string;
+}
+
 export interface ArenaSkillOrder {
   id: number;
   champion_id: string;
@@ -329,6 +342,85 @@ class SupabaseService {
     }
   }
 
+  // ── PRISMATIC ITEMS ────────────────────────────────────────────────────────
+
+  async getPrismaticItemsByChampion(championId: string): Promise<PrismaticItem[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('arena_prismatic_items')
+        .select('*')
+        .eq('champion_id', championId)
+        .order('tier_position', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error(`Error fetching prismatic items for ${championId}:`, error);
+      return [];
+    }
+  }
+
+  async getPrismaticItemsByTier(tier: 'S' | 'A' | 'B' | 'C' | 'D', limit: number = 20): Promise<PrismaticItem[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('arena_prismatic_items')
+        .select('*')
+        .eq('tier_rank', tier)
+        .order('tier_position', { ascending: true })
+        .limit(limit);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error(`Error fetching prismatic items for tier ${tier}:`, error);
+      return [];
+    }
+  }
+
+  async addPrismaticItem(item: Omit<PrismaticItem, 'id' | 'updated_at'>): Promise<boolean> {
+    try {
+      const { error } = await this.supabase
+        .from('arena_prismatic_items')
+        .insert([item]);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error adding prismatic item:', error);
+      return false;
+    }
+  }
+
+  async updatePrismaticItem(id: number, updates: Partial<Omit<PrismaticItem, 'id' | 'updated_at'>>): Promise<boolean> {
+    try {
+      const { error } = await this.supabase
+        .from('arena_prismatic_items')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating prismatic item:', error);
+      return false;
+    }
+  }
+
+  async deletePrismaticItem(id: number): Promise<boolean> {
+    try {
+      const { error } = await this.supabase
+        .from('arena_prismatic_items')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting prismatic item:', error);
+      return false;
+    }
+  }
+
   // ── SKILL ORDER ────────────────────────────────────────────────────────────
 
   async getSkillOrderByChampion(championId: string): Promise<ArenaSkillOrder[]> {
@@ -442,7 +534,7 @@ class SupabaseService {
 
   async createVoiceRoom(roomId: string, gameId: string, host: string): Promise<boolean> {
     try {
-      await this.initialize();
+      
       const { error } = await this.supabase
         .from('voice_rooms')
         .insert({
@@ -466,7 +558,7 @@ class SupabaseService {
 
   async joinVoiceRoom(roomId: string, userId: string): Promise<boolean> {
     try {
-      await this.initialize();
+      
       
       // Get current room
       const { data: room, error: fetchError } = await this.supabase
@@ -503,7 +595,7 @@ class SupabaseService {
 
   async leaveVoiceRoom(roomId: string, userId: string): Promise<boolean> {
     try {
-      await this.initialize();
+      
       
       // Get current room
       const { data: room, error: fetchError } = await this.supabase
@@ -538,7 +630,7 @@ class SupabaseService {
 
   async findVoiceRoomByGameId(gameId: string): Promise<any | null> {
     try {
-      await this.initialize();
+      
       const { data, error } = await this.supabase
         .from('voice_rooms')
         .select('*')
@@ -560,7 +652,7 @@ class SupabaseService {
 
   async cleanupVoiceRoomsByGameId(gameId: string): Promise<boolean> {
     try {
-      await this.initialize();
+      
       const { error } = await this.supabase
         .from('voice_rooms')
         .delete()
@@ -581,7 +673,7 @@ class SupabaseService {
 
   async startGameSession(summonerName: string, gameId: string, championName?: string, region: string = 'euw1'): Promise<boolean> {
     try {
-      await this.initialize();
+      
       const { error } = await this.supabase
         .from('game_sessions')
         .insert({
@@ -605,7 +697,7 @@ class SupabaseService {
 
   async endGameSession(gameId: string): Promise<boolean> {
     try {
-      await this.initialize();
+      
       
       // Use the database function to end game and cleanup voice rooms
       const { error } = await this.supabase.rpc('end_game_session', {
@@ -625,7 +717,7 @@ class SupabaseService {
 
   async findActiveTeammates(summonerName: string, currentGameId?: string): Promise<string[]> {
     try {
-      await this.initialize();
+      
       const { data, error } = await this.supabase
         .from('game_sessions')
         .select('summoner_name')
@@ -647,7 +739,7 @@ class SupabaseService {
 
   async getVoiceRoomParticipants(roomId: string): Promise<string[]> {
     try {
-      await this.initialize();
+      
       const { data, error } = await this.supabase
         .from('voice_rooms')
         .select('participants')
