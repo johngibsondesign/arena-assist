@@ -12,6 +12,8 @@ declare global {
       setAutoLaunchEnabled: (enabled: boolean) => Promise<boolean>;
       // Generic invoke for IPC
       invoke: (channel: string, ...args: any[]) => Promise<any>;
+      // Send method for IPC
+      send: (channel: string, ...args: any[]) => void;
     };
   }
 }

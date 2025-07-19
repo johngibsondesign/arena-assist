@@ -144,7 +144,18 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={isSearching}
+                onClick={(e) => {
+                  console.log('Search button clicked!', e);
+                }}
                 className="btn-primary px-8 py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ 
+                  position: 'relative', 
+                  zIndex: 1000, 
+                  pointerEvents: 'auto',
+                  backgroundColor: '#a855f7',
+                  border: '2px solid #9333ea',
+                  cursor: isSearching ? 'not-allowed' : 'pointer'
+                }}
               >
                 {isSearching ? (
                   <div className="flex items-center space-x-2">

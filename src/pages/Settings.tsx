@@ -179,9 +179,20 @@ export default function Settings() {
                     <p className="text-sm text-gray-400">Check for the latest version of Arena Assist</p>
                   </div>
                   <button
-                    onClick={handleCheckForUpdates}
+                    onClick={(e) => {
+                      console.log('Update button clicked!', e);
+                      handleCheckForUpdates();
+                    }}
                     disabled={isCheckingUpdates}
                     className="btn-primary"
+                    style={{ 
+                      position: 'relative', 
+                      zIndex: 1000, 
+                      pointerEvents: 'auto',
+                      backgroundColor: '#a855f7',
+                      border: '2px solid #9333ea',
+                      cursor: 'pointer'
+                    }}
                   >
                     {isCheckingUpdates ? (
                       <span className="flex items-center">

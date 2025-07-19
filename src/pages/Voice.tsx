@@ -453,8 +453,17 @@ export default function Voice() {
                 min="0"
                 max="100"
                 value={settings.voice.micGain * 100}
-                onChange={(e) => handleVolumeChange('mic', parseInt(e.target.value))}
+                onChange={(e) => {
+                  console.log('Mic volume changed:', e.target.value);
+                  handleVolumeChange('mic', parseInt(e.target.value));
+                }}
                 className="w-full h-2 bg-dark-700 rounded-lg appearance-none cursor-pointer slider"
+                style={{
+                  position: 'relative',
+                  zIndex: 1000,
+                  pointerEvents: 'auto',
+                  cursor: 'pointer'
+                }}
               />
             </div>
 
@@ -470,8 +479,17 @@ export default function Voice() {
                 min="0"
                 max="100"
                 value={settings.voice.speakerVolume * 100}
-                onChange={(e) => handleVolumeChange('speaker', parseInt(e.target.value))}
+                onChange={(e) => {
+                  console.log('Speaker volume changed:', e.target.value);
+                  handleVolumeChange('speaker', parseInt(e.target.value));
+                }}
                 className="w-full h-2 bg-dark-700 rounded-lg appearance-none cursor-pointer slider"
+                style={{
+                  position: 'relative',
+                  zIndex: 1000,
+                  pointerEvents: 'auto',
+                  cursor: 'pointer'
+                }}
               />
             </div>
           </div>
@@ -495,6 +513,12 @@ export default function Voice() {
                   handleDeviceChange('audioInput', e.target.value);
                 }}
                 className="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none cursor-pointer"
+                style={{
+                  position: 'relative',
+                  zIndex: 1000,
+                  pointerEvents: 'auto',
+                  cursor: 'pointer'
+                }}
               >
                 <option value="">System Default</option>
                 {getAudioInputDevices().map((device) => (
@@ -517,6 +541,12 @@ export default function Voice() {
                   handleDeviceChange('audioOutput', e.target.value);
                 }}
                 className="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none cursor-pointer"
+                style={{
+                  position: 'relative',
+                  zIndex: 1000,
+                  pointerEvents: 'auto',
+                  cursor: 'pointer'
+                }}
               >
                 <option value="">System Default</option>
                 {getAudioOutputDevices().map((device) => (

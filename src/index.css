@@ -17,6 +17,23 @@
     font-feature-settings: 'kern', 'liga', 'clig', 'calt';
   }
 
+  /* Ensure all interactive elements are clickable */
+  button, input, select, textarea {
+    position: relative;
+    z-index: 10;
+    pointer-events: auto !important;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Override any potential blocking elements */
+  .pointer-events-none * {
+    pointer-events: auto;
+  }
+
   /* Custom scrollbar for webkit browsers */
   * {
     scrollbar-width: thin;
@@ -86,6 +103,10 @@
     background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
     border-color: #9333ea;
     color: white;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+    cursor: pointer;
   }
 
   .btn-primary:hover {
@@ -93,8 +114,18 @@
     transform: translateY(-1px);
   }
 
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
   .btn-secondary {
     @apply bg-transparent hover:bg-primary-500/10 text-primary-400 font-semibold py-2.5 px-6 rounded-lg border-2 border-primary-500 hover:border-primary-400 transition-all duration-200;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+    cursor: pointer;
   }
 
   .btn-accent {
@@ -112,10 +143,75 @@
   /* Input styles */
   .input-primary {
     @apply bg-dark-800 border-2 border-dark-600 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
   }
 
   .input-primary:hover {
     @apply border-dark-500;
+  }
+
+  /* Range slider styles */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+  }
+
+  input[type="range"]::-webkit-slider-track {
+    background: #374151;
+    height: 8px;
+    border-radius: 4px;
+    border: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: linear-gradient(135deg, #a855f7, #3b82f6);
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.5);
+  }
+
+  input[type="range"]::-moz-range-track {
+    background: #374151;
+    height: 8px;
+    border-radius: 4px;
+    border: none;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    background: linear-gradient(135deg, #a855f7, #3b82f6);
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  /* Select dropdown styles */
+  select {
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+    cursor: pointer;
   }
 
   /* Card styles */
