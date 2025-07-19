@@ -448,19 +448,14 @@ export default function Voice() {
                   {Math.round(settings.voice.micGain * 100)}%
                 </span>
               </div>
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={settings.voice.micGain * 100}
-                  onChange={(e) => handleVolumeChange('mic', parseInt(e.target.value))}
-                  className="w-full h-6 bg-transparent rounded-lg appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, rgb(168, 85, 247) 0%, rgb(168, 85, 247) ${settings.voice.micGain * 100}%, rgb(55, 65, 81) ${settings.voice.micGain * 100}%, rgb(55, 65, 81) 100%)`
-                  }}
-                />
-              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={settings.voice.micGain * 100}
+                onChange={(e) => handleVolumeChange('mic', parseInt(e.target.value))}
+                className="w-full h-2 bg-dark-700 rounded-lg appearance-none cursor-pointer slider"
+              />
             </div>
 
             <div>
@@ -470,19 +465,14 @@ export default function Voice() {
                   {Math.round(settings.voice.speakerVolume * 100)}%
                 </span>
               </div>
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={settings.voice.speakerVolume * 100}
-                  onChange={(e) => handleVolumeChange('speaker', parseInt(e.target.value))}
-                  className="w-full h-6 bg-transparent rounded-lg appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, rgb(168, 85, 247) 0%, rgb(168, 85, 247) ${settings.voice.speakerVolume * 100}%, rgb(55, 65, 81) ${settings.voice.speakerVolume * 100}%, rgb(55, 65, 81) 100%)`
-                  }}
-                />
-              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={settings.voice.speakerVolume * 100}
+                onChange={(e) => handleVolumeChange('speaker', parseInt(e.target.value))}
+                className="w-full h-2 bg-dark-700 rounded-lg appearance-none cursor-pointer slider"
+              />
             </div>
           </div>
         </div>
@@ -543,12 +533,7 @@ export default function Voice() {
             <p className="text-slate-400 mb-1">Debug: Raw device count: {availableDevices.length}</p>
             <p className="text-slate-400 mb-1">Audio inputs: {getAudioInputDevices().length}, Audio outputs: {getAudioOutputDevices().length}</p>
             <button 
-              onClick={async () => {
-                console.log('Refreshing devices...');
-                const devices = await webrtcService.enumerateDevices();
-                setAvailableDevices([...devices]);
-                console.log('Devices refreshed:', devices.length);
-              }} 
+              onClick={() => webrtcService.enumerateDevices()} 
               className="mt-2 px-3 py-1 bg-primary-500/20 text-primary-400 rounded text-xs hover:bg-primary-500/30"
             >
               🔄 Refresh Devices
