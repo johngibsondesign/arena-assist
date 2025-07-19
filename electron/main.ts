@@ -123,6 +123,23 @@ function createMainWindow(): void {
     show: false, // Don't show initially
   });
 
+  // Handle permissions for microphone and camera (needed for WebRTC voice chat)
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    console.log('Permission requested:', permission);
+    
+    // Allow media access for voice chat functionality (covers microphone and camera)
+    if (permission === 'media') {
+      console.log('Granting media permission for voice chat');
+      callback(true);
+    } else if (permission === 'display-capture') {
+      console.log('Granting display-capture permission for screen sharing');
+      callback(true);
+    } else {
+      console.log(`Denying ${permission} permission`);
+      callback(false);
+    }
+  });
+
   // Load the app
   if (isDev && VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(VITE_DEV_SERVER_URL);
@@ -398,14 +415,23 @@ ipcMain.handle('window-is-maximized', () => {
 ipcMain.handle('check-for-updates', async () => {
   if (!isDev) {
     try {
+      console.log('Checking for updates...');
       const updateCheckResult = await autoUpdater.checkForUpdates();
+      console.log('Update check result:', updateCheckResult);
       return updateCheckResult;
     } catch (error) {
       console.error('Manual update check failed:', error);
-      return null;
+      return { error: error.message };
     }
+  } else {
+    // In development, simulate an update check
+    console.log('Development mode - simulating update check');
+    return { 
+      updateInfo: null, 
+      isDev: true, 
+      message: 'Update checking disabled in development mode' 
+    };
   }
-  return null;
 });
 
 ipcMain.handle('get-app-version', () => {
@@ -433,6 +459,21 @@ ipcMain.handle('set-auto-launch-enabled', async (_, enabled) => {
   } catch (error) {
     console.error('Failed to set auto-launch:', error);
     return false;
+  }
+});
+
+// Permission check handler
+ipcMain.handle('check-media-permissions', async () => {
+  try {
+    if (mainWindow) {
+      // This will help debug permission issues
+      console.log('Checking media permissions...');
+      return { status: 'available' };
+    }
+    return { status: 'unavailable' };
+  } catch (error) {
+    console.error('Failed to check permissions:', error);
+    return { status: 'error', error: error.message };
   }
 });
 

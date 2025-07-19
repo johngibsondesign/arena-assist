@@ -34,15 +34,26 @@ export default function Settings() {
       });
 
       const result = await window.electronAPI?.checkForUpdates();
+      console.log('Update check response:', result);
       
-      if (result && result.updateInfo) {
+      if (result?.error) {
+        addNotification({
+          type: 'error',
+          message: `Update check failed: ${result.error}`,
+        });
+      } else if (result?.isDev) {
+        addNotification({
+          type: 'info',
+          message: result.message || 'Update checking disabled in development mode',
+        });
+      } else if (result && result.updateInfo) {
         addNotification({
           type: 'success',
           message: `Update available: v${result.updateInfo.version}`,
         });
       } else {
         addNotification({
-          type: 'info',
+          type: 'success',
           message: 'You are running the latest version!',
         });
       }
