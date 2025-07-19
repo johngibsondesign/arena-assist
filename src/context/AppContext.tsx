@@ -35,6 +35,8 @@ interface AppState {
       autoJoin: boolean;
       micGain: number;
       speakerVolume: number;
+      selectedMicrophone: string;
+      selectedSpeaker: string;
     };
     api: {
       riotApiKey: string;
@@ -121,6 +123,8 @@ const initialState: AppState = {
       autoJoin: true,
       micGain: 0.8,
       speakerVolume: 0.8,
+      selectedMicrophone: '',
+      selectedSpeaker: '',
     },
           api: {
         riotApiKey: apiKeys.RIOT_API_KEY,

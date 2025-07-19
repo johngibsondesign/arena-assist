@@ -369,6 +369,40 @@ class WebRTCService {
       });
     }
   }
+
+  // Set microphone gain/volume
+  setMicrophoneGain(gain: number): void {
+    console.log('Setting microphone gain:', gain);
+    if (this.localStream) {
+      this.localStream.getAudioTracks().forEach(track => {
+        // Apply gain through audio context if available
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(this.localStream!);
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = Math.max(0, Math.min(2, gain)); // Clamp between 0 and 2
+        source.connect(gainNode);
+      });
+    }
+  }
+
+  // Set speaker volume (note: limited browser support)
+  setSpeakerVolume(volume: number): void {
+    console.log('Setting speaker volume:', volume);
+    // Note: Direct speaker volume control is limited in browsers
+    // This would typically be handled by the audio element or Web Audio API
+  }
+
+  // Auto-join a room based on game state
+  async autoJoinRoom(summonerName: string): Promise<void> {
+    if (!this.autoJoinEnabled) {
+      console.log('Auto-join disabled, skipping...');
+      return;
+    }
+
+    // Create room ID based on summoner name and some game identifier
+    const roomId = `arena_${summonerName}_${Date.now()}`;
+    await this.joinRoom(roomId, summonerName);
+  }
 }
 
 // Create and export a singleton instance

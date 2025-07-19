@@ -69,12 +69,20 @@ export default function Voice() {
         setLoadingError(null);
         
         // Initialize devices first
-        await webrtcService.enumerateDevices();
+        const devices = await webrtcService.enumerateDevices();
+        
+        // Sync selected devices with WebRTC service
+        setSelectedAudioInput(webrtcService.selectedAudioInputId);
+        setSelectedAudioOutput(webrtcService.selectedAudioOutputId);
+        
+        // Set auto-join from settings
+        webrtcService.setAutoJoinEnabled(settings.voice?.autoJoin ?? true);
         
         // Set up callbacks
         webrtcService.onConnectionStateChange = (connected: boolean, roomId?: string) => {
           console.log('Connection state changed:', connected, roomId);
           setIsConnected(connected);
+          setIsConnecting(false);
           setCurrentRoom(connected ? roomId || null : null);
           
           if (connected) {
@@ -184,12 +192,21 @@ export default function Voice() {
     }, 2000);
   };
 
+  const handleAutoJoinToggle = (enabled: boolean) => {
+    const newSettings = { ...settings };
+    newSettings.voice.autoJoin = enabled;
+    updateSettings(newSettings);
+    webrtcService.setAutoJoinEnabled(enabled);
+  };
+
   const handleVolumeChange = (type: 'mic' | 'speaker', value: number) => {
     const newSettings = { ...settings };
     if (type === 'mic') {
       newSettings.voice.micGain = value / 100;
+      webrtcService.setMicrophoneGain(value / 100);
     } else {
       newSettings.voice.speakerVolume = value / 100;
+      webrtcService.setSpeakerVolume(value / 100);
     }
     updateSettings(newSettings);
   };
@@ -204,6 +221,15 @@ export default function Voice() {
       setSelectedAudioOutput(deviceId);
       await webrtcService.setAudioOutputDevice(deviceId);
     }
+    
+    // Save device selection to settings
+    const newSettings = { ...settings };
+    if (deviceType === 'audioInput') {
+      newSettings.voice.selectedMicrophone = deviceId;
+    } else if (deviceType === 'audioOutput') {
+      newSettings.voice.selectedSpeaker = deviceId;
+    }
+    updateSettings(newSettings);
   };
 
   const getAudioInputDevices = () => {
@@ -338,9 +364,7 @@ export default function Voice() {
                   <input
                     type="checkbox"
                     checked={settings.voice.autoJoin}
-                    onChange={(e) => updateSettings({
-                      voice: { ...settings.voice, autoJoin: e.target.checked }
-                    })}
+                    onChange={(e) => handleAutoJoinToggle(e.target.checked)}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
@@ -355,20 +379,60 @@ export default function Voice() {
             </div>
             <div>
               <h4 className="text-lg font-semibold text-primary-400">Ready to Connect</h4>
-              <p className="text-slate-400">Start an Arena game or join manually</p>
+              <p className="text-slate-400">
+                {settings.voice.autoJoin 
+                  ? "Auto-join enabled - will connect when Arena game starts" 
+                  : "Manual join - click below to start voice chat"
+                }
+              </p>
             </div>
             
-            {state.game.summonerName ? (
-              <button
-                onClick={() => joinVoiceChat()}
-                disabled={isConnecting}
-                className="btn-primary px-8 py-4 text-lg"
-              >
-                {isConnecting ? 'Connecting...' : '🎤 Join Voice Chat'}
-              </button>
-            ) : (
-              <p className="text-sm text-slate-400">Start an Arena game to enable voice chat</p>
-            )}
+            <div className="space-y-4">
+              {state.game.summonerName ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => joinVoiceChat()}
+                    disabled={isConnecting}
+                    className="btn-primary px-8 py-4 text-lg w-full max-w-xs mx-auto block"
+                  >
+                    {isConnecting ? (
+                      <span className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Connecting...
+                      </span>
+                    ) : (
+                      '🎤 Join Voice Chat'
+                    )}
+                  </button>
+                  
+                  <p className="text-xs text-slate-500">
+                    Playing as: {state.game.summonerName}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-slate-400">Start an Arena game to enable voice chat</p>
+                  <p className="text-xs text-slate-500">League client not detected</p>
+                </div>
+              )}
+              
+              {/* Auto-join toggle for non-connected state */}
+              <div className="flex items-center justify-center space-x-3 pt-4 border-t border-dark-600">
+                <span className="text-sm text-slate-400">Auto-join games:</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.voice.autoJoin}
+                    onChange={(e) => handleAutoJoinToggle(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                </label>
+              </div>
+            </div>
           </div>
         )}
 

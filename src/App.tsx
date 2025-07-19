@@ -16,7 +16,7 @@ import { LcuApiService } from './services/lcuApi';
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { dispatch } = useApp();
+  const { state, dispatch } = useApp();
   const [isOverlay, setIsOverlay] = useState(false);
   const [lcuService] = useState(() => new LcuApiService());
 
@@ -76,6 +76,15 @@ function AppContent() {
             navigate('/champions'); // Show current champion info
           }
         });
+        
+        // Auto-join voice chat if enabled and summoner name is available
+        const summonerName = state.game.summonerName;
+        if (summonerName) {
+          console.log('Game started, triggering auto-join voice chat...');
+          import('./services/webrtcService').then(({ default: webrtcService }) => {
+            webrtcService.autoJoinGameRoom(phase, summonerName);
+          });
+        }
       }
     };
 
