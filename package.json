@@ -1,6 +1,6 @@
 {
   "name": "arena-assist",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Desktop app for League of Legends Arena game mode assistance",
   "main": "dist/main.js",
   "scripts": {
@@ -76,7 +76,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "publisherName": "Arena Assist"
@@ -94,7 +96,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Game"
