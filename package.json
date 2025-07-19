@@ -1,6 +1,7 @@
 {
   "name": "arena-assist",
   "version": "1.0.5",
+  "type": "module",
   "description": "Desktop app for League of Legends Arena game mode assistance",
   "main": "dist/main.js",
   "scripts": {
@@ -60,6 +61,11 @@
       "node_modules/**/*",
       "package.json"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "johngibsondesign",
+      "repo": "arena-assist"
+    },
     "win": {
       "target": [
         {

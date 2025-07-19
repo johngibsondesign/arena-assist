@@ -6,6 +6,9 @@ on:
       - 'v*' # Trigger on version tags like v1.0.0, v1.1.0, etc.
   workflow_dispatch: # Allow manual trigger
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -32,35 +35,11 @@ jobs:
         # Skip code signing if certificates are not available
         CSC_IDENTITY_AUTO_DISCOVERY: false
         # GitHub token for publishing to releases
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: dist-windows
         path: release/
-        if-no-files-found: error
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-    - name: Check out Git repository
-      uses: actions/checkout@v4
-
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: artifacts/**/*
-        draft: false
-        prerelease: false
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        if-no-files-found: error 
