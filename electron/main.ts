@@ -1,8 +1,8 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen, shell, dialog, Tray, Menu, nativeImage } = require('electron');
-const { autoUpdater } = require('electron-updater');
-const { join } = require('node:path');
-const Store = require('electron-store');
-const AutoLaunch = require('auto-launch');
+import { app, BrowserWindow, globalShortcut, ipcMain, screen, shell, dialog, Tray, Menu, nativeImage } from 'electron';
+import { autoUpdater } from 'electron-updater';
+import { join } from 'node:path';
+import Store from 'electron-store';
+import AutoLaunch from 'auto-launch';
 
 // Initialize persistent store
 const store = new Store();
@@ -10,7 +10,8 @@ const store = new Store();
 // Window references
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
-let tray: any = null;
+let tray: Tray | null = null;
+let isQuitting = false;
 
 // Auto-launch setup
 const autoLauncher = new AutoLaunch({
@@ -138,7 +139,7 @@ function createMainWindow(): void {
 
   // Hide to tray instead of closing
   mainWindow.on('close', (event) => {
-    if (!app.isQuiting) {
+    if (!isQuitting) {
       event.preventDefault();
       mainWindow?.hide();
       return false;
@@ -288,7 +289,7 @@ function createTray(): void {
     {
       label: 'Quit Arena Assist',
       click: () => {
-        app.isQuiting = true;
+        isQuitting = true;
         app.quit();
       }
     }
@@ -411,6 +412,30 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
+// Auto-launch IPC handlers
+ipcMain.handle('get-auto-launch-enabled', async () => {
+  try {
+    return await autoLauncher.isEnabled();
+  } catch (error) {
+    console.error('Failed to check auto-launch status:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('set-auto-launch-enabled', async (_, enabled) => {
+  try {
+    if (enabled) {
+      await autoLauncher.enable();
+    } else {
+      await autoLauncher.disable();
+    }
+    return true;
+  } catch (error) {
+    console.error('Failed to set auto-launch:', error);
+    return false;
+  }
+});
+
 // App event handlers
 app.whenReady().then(async () => {
   createMainWindow();
@@ -456,7 +481,7 @@ app.on('window-all-closed', (e: any) => {
 });
 
 app.on('before-quit', () => {
-  app.isQuiting = true;
+  isQuitting = true;
 });
 
 app.on('will-quit', () => {

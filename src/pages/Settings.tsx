@@ -4,8 +4,77 @@ import { useSettings, useNotifications } from '../context/AppContext';
 export default function Settings() {
   const { settings, updateSettings } = useSettings();
   const { addNotification } = useNotifications();
-  const [activeTab, setActiveTab] = useState<'api' | 'hotkeys' | 'overlay' | 'voice' | 'about'>('api');
+  const [activeTab, setActiveTab] = useState<'general' | 'hotkeys' | 'overlay' | 'voice' | 'about'>('general');
   const [showApiKeys, setShowApiKeys] = useState(false);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [autoLaunchEnabled, setAutoLaunchEnabled] = useState(false);
+
+  // Check auto-launch status on component mount
+  React.useEffect(() => {
+    const checkAutoLaunch = async () => {
+      try {
+        const enabled = await window.electronAPI?.getAutoLaunchEnabled();
+        setAutoLaunchEnabled(enabled || false);
+      } catch (error) {
+        console.error('Failed to check auto-launch status:', error);
+      }
+    };
+    
+    if (window.electronAPI) {
+      checkAutoLaunch();
+    }
+  }, []);
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdates(true);
+    try {
+      addNotification({
+        type: 'info',
+        message: 'Checking for updates...',
+      });
+
+      const result = await window.electronAPI?.checkForUpdates();
+      
+      if (result && result.updateInfo) {
+        addNotification({
+          type: 'success',
+          message: `Update available: v${result.updateInfo.version}`,
+        });
+      } else {
+        addNotification({
+          type: 'info',
+          message: 'You are running the latest version!',
+        });
+      }
+    } catch (error) {
+      console.error('Update check failed:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to check for updates. Please try again later.',
+      });
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  };
+
+  const handleToggleAutoLaunch = async () => {
+    try {
+      const newEnabled = !autoLaunchEnabled;
+      await window.electronAPI?.setAutoLaunchEnabled(newEnabled);
+      setAutoLaunchEnabled(newEnabled);
+      
+      addNotification({
+        type: 'success',
+        message: `Start with Windows ${newEnabled ? 'enabled' : 'disabled'}`,
+      });
+    } catch (error) {
+      console.error('Failed to toggle auto-launch:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to update startup settings',
+      });
+    }
+  };
 
   const handleSaveSettings = () => {
     addNotification({
@@ -30,7 +99,7 @@ export default function Settings() {
   };
 
   const tabs = [
-    { id: 'api', label: 'API Keys', icon: '🔑' },
+    { id: 'general', label: 'General', icon: '⚙️' },
     { id: 'hotkeys', label: 'Hotkeys', icon: '⌨️' },
     { id: 'overlay', label: 'Overlay', icon: '👁️' },
     { id: 'voice', label: 'Voice', icon: '🎤' },
@@ -66,128 +135,57 @@ export default function Settings() {
 
         {/* Tab Content */}
         <div className="card">
-          {/* API Keys Tab */}
-          {activeTab === 'api' && (
+          {/* General Tab */}
+          {activeTab === 'general' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-arena-primary">API Configuration</h2>
-                <button
-                  onClick={() => setShowApiKeys(!showApiKeys)}
-                  className="btn-secondary text-sm"
-                >
-                  {showApiKeys ? '🙈 Hide Keys' : '👁️ Show Keys'}
-                </button>
-              </div>
-
-              {/* Riot API */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="font-medium text-gray-300">Riot Games API Key</label>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-400">Free tier</span>
-                    <div className="status-offline"></div>
+              <h2 className="text-xl font-semibold text-arena-primary">General Settings</h2>
+              
+              {/* Auto-Launch Setting */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                  <div>
+                    <h3 className="font-medium text-white">Start with Windows</h3>
+                    <p className="text-sm text-gray-400">Automatically start Arena Assist when Windows starts</p>
                   </div>
-                </div>
-                <input
-                  type={showApiKeys ? 'text' : 'password'}
-                  value={settings.api.riotApiKey}
-                  onChange={(e) => updateSettings({
-                    api: { ...settings.api, riotApiKey: e.target.value }
-                  })}
-                  placeholder="Enter your Riot API key..."
-                  className="input-primary w-full"
-                />
-                <div className="flex justify-between text-sm">
-                  <a
-                    href="https://developer.riotgames.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-arena-accent hover:text-arena-primary underline"
-                  >
-                    Get API Key from Riot Developer Portal
-                  </a>
                   <button
-                    onClick={() => handleTestConnection('Riot API')}
-                    className="text-green-400 hover:text-green-300"
+                    onClick={handleToggleAutoLaunch}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      autoLaunchEnabled ? 'bg-blue-600' : 'bg-gray-600'
+                    }`}
                   >
-                    Test Connection
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        autoLaunchEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Update Check Button */}
+                <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                  <div>
+                    <h3 className="font-medium text-white">App Updates</h3>
+                    <p className="text-sm text-gray-400">Check for the latest version of Arena Assist</p>
+                  </div>
+                  <button
+                    onClick={handleCheckForUpdates}
+                    disabled={isCheckingUpdates}
+                    className="btn-primary"
+                  >
+                    {isCheckingUpdates ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Checking...
+                      </span>
+                    ) : (
+                      'Check for Updates'
+                    )}
                   </button>
                 </div>
               </div>
-
-              {/* OpenAI API */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="font-medium text-gray-300">OpenAI API Key</label>
-                  <div className="flex items-center space-x-2">
-                    <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded">PRO</span>
-                    <div className="status-offline"></div>
-                  </div>
-                </div>
-                <input
-                  type={showApiKeys ? 'text' : 'password'}
-                  value={settings.api.openAiApiKey}
-                  onChange={(e) => updateSettings({
-                    api: { ...settings.api, openAiApiKey: e.target.value }
-                  })}
-                  placeholder="sk-..."
-                  className="input-primary w-full"
-                />
-                <div className="flex justify-between text-sm">
-                  <a
-                    href="https://platform.openai.com/api-keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-arena-accent hover:text-arena-primary underline"
-                  >
-                    Get API Key from OpenAI Platform
-                  </a>
-                  <button
-                    onClick={() => handleTestConnection('OpenAI API')}
-                    className="text-green-400 hover:text-green-300"
-                  >
-                    Test Connection
-                  </button>
-                </div>
-              </div>
-
-              {/* Supabase */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="font-medium text-gray-300">Supabase Configuration</label>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-400">Voice signaling</span>
-                    <div className="status-offline"></div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    value={settings.api.supabaseUrl}
-                    onChange={(e) => updateSettings({
-                      api: { ...settings.api, supabaseUrl: e.target.value }
-                    })}
-                    placeholder="Supabase URL"
-                    className="input-primary"
-                  />
-                  <input
-                    type={showApiKeys ? 'text' : 'password'}
-                    value={settings.api.supabaseKey}
-                    onChange={(e) => updateSettings({
-                      api: { ...settings.api, supabaseKey: e.target.value }
-                    })}
-                    placeholder="Anon Key"
-                    className="input-primary"
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  Used for WebRTC signaling and match history sync
-                </p>
-              </div>
-
-              <button onClick={handleSaveSettings} className="btn-primary w-full">
-                💾 Save API Configuration
-              </button>
             </div>
           )}
 

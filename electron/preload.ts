@@ -71,7 +71,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Send messages to main process
   send: (channel: string, ...args: any[]) => {
     ipcRenderer.send(channel, ...args);
-  }
+  },
+
+  // Auto-updater
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+
+  // Auto-launch
+  getAutoLaunchEnabled: () => ipcRenderer.invoke('get-auto-launch-enabled'),
+  setAutoLaunchEnabled: (enabled: boolean) => ipcRenderer.invoke('set-auto-launch-enabled', enabled),
+
+  // Generic invoke method for IPC calls
+  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args)
 });
 
 // Also expose some Node.js globals that might be useful
