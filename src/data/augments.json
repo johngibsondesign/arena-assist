@@ -1,0 +1,223 @@
+{
+  "augments": [
+    {
+      "id": "starcaster_lament",
+      "name": "Starcaster's Lament",
+      "description": "Your spells deal bonus magic damage based on your maximum mana",
+      "category": "damage",
+      "tier": "S",
+      "pickRate": 82.5,
+      "winRate": 67.3,
+      "synergies": ["mage", "ap_carry"],
+      "keywords": ["magic damage", "mana", "spell power"]
+    },
+    {
+      "id": "ancestral_guidance",
+      "name": "Ancestral Guidance", 
+      "description": "Your healing and shielding effects are increased by 35%",
+      "category": "healing",
+      "tier": "S",
+      "pickRate": 76.2,
+      "winRate": 71.8,
+      "synergies": ["support", "enchanter"],
+      "keywords": ["healing", "shielding", "support"]
+    },
+    {
+      "id": "tome_of_warding",
+      "name": "Tome of Warding",
+      "description": "Gain 40 magic resistance and 30% tenacity",
+      "category": "tank",
+      "tier": "B",
+      "pickRate": 45.1,
+      "winRate": 59.4,
+      "synergies": ["tank", "bruiser"],
+      "keywords": ["magic resistance", "tenacity", "defensive"]
+    },
+    {
+      "id": "prismatic_barrier",
+      "name": "Prismatic Barrier",
+      "description": "When you take damage, gain a shield equal to 15% of your maximum health",
+      "category": "utility",
+      "tier": "C", 
+      "pickRate": 38.7,
+      "winRate": 52.1,
+      "synergies": ["tank", "sustain"],
+      "keywords": ["shield", "defensive", "health"]
+    },
+    {
+      "id": "soul_siphon",
+      "name": "Soul Siphon",
+      "description": "Damaging enemy champions heals you for 8% of damage dealt",
+      "category": "healing",
+      "tier": "A",
+      "pickRate": 64.3,
+      "winRate": 61.7,
+      "synergies": ["sustain", "fighter"],
+      "keywords": ["lifesteal", "healing", "sustain"]
+    },
+    {
+      "id": "fury_of_the_storm",
+      "name": "Fury of the Storm",
+      "description": "Every 4th basic attack deals bonus damage and grants movement speed",
+      "category": "damage",
+      "tier": "A",
+      "pickRate": 71.8,
+      "winRate": 63.9,
+      "synergies": ["adc", "fighter"],
+      "keywords": ["basic attack", "movement speed", "on-hit"]
+    },
+    {
+      "id": "void_essence",
+      "name": "Void Essence",
+      "description": "Gain 25% magic penetration and your spells reduce enemy magic resistance",
+      "category": "damage",
+      "tier": "S",
+      "pickRate": 79.1,
+      "winRate": 69.2,
+      "synergies": ["mage", "ap_carry"],
+      "keywords": ["magic penetration", "penetration", "void"]
+    },
+    {
+      "id": "iron_will",
+      "name": "Iron Will",
+      "description": "Gain 400 health and 20 armor. Take 15% reduced damage from champions",
+      "category": "tank",
+      "tier": "A",
+      "pickRate": 58.9,
+      "winRate": 65.4,
+      "synergies": ["tank", "bruiser"],
+      "keywords": ["health", "armor", "damage reduction"]
+    },
+    {
+      "id": "golden_aegis",
+      "name": "Golden Aegis",
+      "description": "Upon reaching low health, become untargetable for 2 seconds (120s cooldown)",
+      "category": "utility",
+      "tier": "B",
+      "pickRate": 42.6,
+      "winRate": 58.1,
+      "synergies": ["carry", "assassin"],
+      "keywords": ["untargetable", "survivability", "escape"]
+    },
+    {
+      "id": "berserker_rage",
+      "name": "Berserker's Rage",
+      "description": "Gain 40% attack speed. When below 50% health, gain an additional 60% attack speed",
+      "category": "damage",
+      "tier": "A",
+      "pickRate": 67.4,
+      "winRate": 62.8,
+      "synergies": ["adc", "fighter"],
+      "keywords": ["attack speed", "berserker", "low health"]
+    },
+    {
+      "id": "mystic_ward",
+      "name": "Mystic Ward",
+      "description": "Gain a shield that regenerates out of combat. Shield strength scales with level",
+      "category": "utility",
+      "tier": "B",
+      "pickRate": 35.2,
+      "winRate": 54.7,
+      "synergies": ["sustain", "support"],
+      "keywords": ["shield", "regeneration", "sustain"]
+    },
+    {
+      "id": "shadowflame_cloak",
+      "name": "Shadowflame Cloak",
+      "description": "Your abilities burn enemies, dealing magic damage over time",
+      "category": "damage",
+      "tier": "A",
+      "pickRate": 69.3,
+      "winRate": 64.1,
+      "synergies": ["mage", "dot"],
+      "keywords": ["burn", "damage over time", "magic damage"]
+    },
+    {
+      "id": "cleansing_waters",
+      "name": "Cleansing Waters",
+      "description": "Remove all debuffs and gain 30% movement speed for 3 seconds (60s cooldown)",
+      "category": "utility",
+      "tier": "C",
+      "pickRate": 28.4,
+      "winRate": 51.9,
+      "synergies": ["utility", "mobility"],
+      "keywords": ["cleanse", "movement speed", "debuff removal"]
+    },
+    {
+      "id": "phoenix_renewal",
+      "name": "Phoenix Renewal",
+      "description": "Upon death, revive with 50% health and deal AoE damage (300s cooldown)",
+      "category": "utility",
+      "tier": "B",
+      "pickRate": 39.8,
+      "winRate": 56.3,
+      "synergies": ["carry", "team fight"],
+      "keywords": ["revive", "resurrection", "area damage"]
+    },
+    {
+      "id": "titans_resolve",
+      "name": "Titan's Resolve",
+      "description": "Gain damage reduction stacks when taking damage. At max stacks, your next ability deals bonus damage",
+      "category": "tank",
+      "tier": "A",
+      "pickRate": 55.7,
+      "winRate": 63.2,
+      "synergies": ["tank", "bruiser"],
+      "keywords": ["damage reduction", "stacks", "ability power"]
+    }
+  ],
+  "categories": {
+    "damage": {
+      "name": "Damage",
+      "description": "Augments that increase offensive capabilities",
+      "icon": "⚔️",
+      "color": "#ff6b6b"
+    },
+    "tank": {
+      "name": "Tank",
+      "description": "Augments that provide defensive bonuses",
+      "icon": "🛡️", 
+      "color": "#4ecdc4"
+    },
+    "utility": {
+      "name": "Utility",
+      "description": "Augments that provide unique effects and utility",
+      "icon": "🔧",
+      "color": "#45b7d1"
+    },
+    "healing": {
+      "name": "Healing",
+      "description": "Augments that provide healing and sustain",
+      "icon": "💚",
+      "color": "#96ceb4"
+    }
+  },
+  "tiers": {
+    "S": {
+      "name": "S-Tier",
+      "description": "Highest pick rate and win rate augments",
+      "color": "#ffd93d",
+      "threshold": { "pickRate": 70, "winRate": 65 }
+    },
+    "A": {
+      "name": "A-Tier", 
+      "description": "Strong augments with good performance",
+      "color": "#6bcf7f",
+      "threshold": { "pickRate": 55, "winRate": 60 }
+    },
+    "B": {
+      "name": "B-Tier",
+      "description": "Decent augments with average performance", 
+      "color": "#4d94ff",
+      "threshold": { "pickRate": 35, "winRate": 55 }
+    },
+    "C": {
+      "name": "C-Tier",
+      "description": "Lower tier augments with situational use",
+      "color": "#999999",
+      "threshold": { "pickRate": 0, "winRate": 0 }
+    }
+  },
+  "lastUpdated": "2024-01-15T00:00:00Z",
+  "version": "1.0.0"
+} 

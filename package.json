@@ -1,0 +1,112 @@
+{
+  "name": "arena-assist",
+  "version": "1.0.0",
+  "description": "Desktop app for League of Legends Arena game mode assistance",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev:vite": "vite",
+    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "build": "npm run build:vite && npm run build:electron",
+    "build:vite": "vite build",
+    "build:electron": "electron-builder",
+    "build:publish": "npm run build:vite && electron-builder --publish=always",
+    "release": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags",
+    "preview": "vite preview",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.52.0",
+    "auto-launch": "^5.0.5",
+    "axios": "^1.6.2",
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.6.2",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.20.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.1",
+    "simple-peer": "^9.11.1",
+    "tesseract.js": "^4.1.1",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "electron": "^27.1.3",
+    "electron-builder": "^24.9.1",
+    "globalthis": "^1.0.3",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "vite-plugin-electron": "^0.15.5",
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.arenaassist.app",
+    "productName": "Arena Assist",
+    "directories": {
+      "buildResources": "assets",
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "johngibsondesign",
+      "repo": "arena-assist"
+    },
+    "mac": {
+      "icon": "assets/icon.icns",
+      "target": "dmg",
+      "category": "public.app-category.games"
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "publisherName": "Arena Assist"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Game"
+    }
+  },
+  "keywords": [
+    "league-of-legends",
+    "arena",
+    "gaming",
+    "overlay",
+    "electron"
+  ],
+  "author": "Arena Assist Team",
+  "license": "MIT"
+}
