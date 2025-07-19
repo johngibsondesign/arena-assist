@@ -40,9 +40,16 @@ export interface CurrentSummoner {
 export class LcuApiService {
   private baseUrl = 'https://127.0.0.1:2999';
   private credentials: string | null = null;
+  private isClientConnected = false;
+  private pollingInterval: NodeJS.Timeout | null = null;
+  
+  // Callbacks
+  public onClientStatusChange: ((connected: boolean) => void) | null = null;
+  public onGamePhaseChange: ((phase: string) => void) | null = null;
 
   constructor() {
     this.detectCredentials();
+    this.startPolling();
   }
 
   private async detectCredentials(): Promise<void> {
@@ -55,6 +62,35 @@ export class LcuApiService {
       this.credentials = 'Basic ' + btoa('riot:' + 'mock-auth-token');
     } catch (error) {
       console.error('Failed to detect LCU credentials:', error);
+    }
+  }
+
+  private startPolling(): void {
+    this.pollingInterval = setInterval(async () => {
+      const wasConnected = this.isClientConnected;
+      this.isClientConnected = await this.isClientRunning();
+      
+      if (wasConnected !== this.isClientConnected && this.onClientStatusChange) {
+        this.onClientStatusChange(this.isClientConnected);
+      }
+      
+      if (this.isClientConnected) {
+        try {
+          const gameflow = await this.getGameflowSession();
+          if (gameflow && this.onGamePhaseChange) {
+            this.onGamePhaseChange(gameflow.phase);
+          }
+        } catch (error) {
+          // Ignore errors during polling
+        }
+      }
+    }, 2000); // Poll every 2 seconds
+  }
+
+  public stopPolling(): void {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
     }
   }
 
@@ -189,6 +225,36 @@ export class LcuApiService {
     } catch (error) {
       console.error('Failed to get current champion:', error);
       return null;
+    }
+  }
+
+  async getArenaMatchHistory(): Promise<any[]> {
+    try {
+      const currentSummoner = await this.getCurrentSummoner();
+      if (!currentSummoner) return [];
+
+      // Get match history for Arena mode (queue 1700)
+      const data = await this.makeRequest(`/lol-match-history/v1/products/lol/${currentSummoner.puuid}/matches?begIndex=0&endIndex=20`);
+      
+      // Filter for Arena games
+      return data.games?.filter((game: any) => game.queueId === 1700) || [];
+    } catch (error) {
+      console.error('Failed to get Arena match history:', error);
+      return [];
+    }
+  }
+
+  async getChampionStats(): Promise<any[]> {
+    try {
+      const currentSummoner = await this.getCurrentSummoner();
+      if (!currentSummoner) return [];
+
+      // Get ranked stats for champions
+      const data = await this.makeRequest(`/lol-ranked/v1/current-ranked-stats`);
+      return data.champions || [];
+    } catch (error) {
+      console.error('Failed to get champion stats:', error);
+      return [];
     }
   }
 

@@ -48,6 +48,8 @@ export default function Voice() {
   // Audio controls
   const [isMuted, setIsMuted] = useState(false);
   const [micTesting, setMicTesting] = useState(false);
+  const [voiceServicesLoaded, setVoiceServicesLoaded] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   
   // Device states
   const [selectedAudioInput, setSelectedAudioInput] = useState('');
@@ -62,46 +64,62 @@ export default function Voice() {
   useEffect(() => {
     console.log('Setting up WebRTC service callbacks...');
     
-    webrtcService.onConnectionStateChange = (connected: boolean, roomId?: string) => {
-      console.log('Connection state changed:', connected, roomId);
-      setIsConnected(connected);
-      setCurrentRoom(connected ? roomId || null : null);
-      
-      if (connected) {
-        setConnections([
-          { id: 'self', summonerName: state.game.summonerName || 'You', connected: true, muted: isMuted, speaking: false }
-        ]);
-      } else {
-        setConnections([]);
-        setTeammateProfile(null);
+    const initializeVoiceServices = async () => {
+      try {
+        setLoadingError(null);
+        
+        // Initialize devices first
+        await webrtcService.enumerateDevices();
+        
+        // Set up callbacks
+        webrtcService.onConnectionStateChange = (connected: boolean, roomId?: string) => {
+          console.log('Connection state changed:', connected, roomId);
+          setIsConnected(connected);
+          setCurrentRoom(connected ? roomId || null : null);
+          
+          if (connected) {
+            setConnections([
+              { id: 'self', summonerName: state.game.summonerName || 'You', connected: true, muted: isMuted, speaking: false }
+            ]);
+          } else {
+            setConnections([]);
+            setTeammateProfile(null);
+          }
+        };
+        
+        webrtcService.onParticipantUpdate = (participants: any[]) => {
+          console.log('Participants updated:', participants);
+          const voiceConnections: VoiceConnection[] = participants.map(p => ({
+            id: p.id,
+            summonerName: p.summonerName || p.id,
+            connected: p.connected || false,
+            muted: p.muted || false,
+            speaking: p.speaking || false,
+          }));
+          setConnections(voiceConnections);
+          
+          // Load teammate profile when someone connects
+          const teammate = participants.find(p => p.id !== 'self' && p.connected);
+          if (teammate && teammate.summonerName && teammate.summonerName !== 'Unknown') {
+            loadTeammateProfile(teammate.summonerName);
+          }
+        };
+        
+        webrtcService.onDevicesChanged = (devices: any[]) => {
+          console.log('Devices updated:', devices);
+          setAvailableDevices([...devices]);
+        };
+        
+        setVoiceServicesLoaded(true);
+        console.log('Voice services initialized successfully');
+        
+      } catch (error) {
+        console.error('Failed to initialize voice services:', error);
+        setLoadingError(error instanceof Error ? error.message : 'Failed to initialize voice services');
       }
     };
     
-    webrtcService.onParticipantUpdate = (participants: any[]) => {
-      console.log('Participants updated:', participants);
-      const voiceConnections: VoiceConnection[] = participants.map(p => ({
-        id: p.id,
-        summonerName: p.summonerName || p.id,
-        connected: p.connected || false,
-        muted: p.muted || false,
-        speaking: p.speaking || false,
-      }));
-      setConnections(voiceConnections);
-      
-      // Load teammate profile when someone connects
-      const teammate = participants.find(p => p.id !== 'self' && p.connected);
-      if (teammate && teammate.summonerName && teammate.summonerName !== 'Unknown') {
-        loadTeammateProfile(teammate.summonerName);
-      }
-    };
-    
-    webrtcService.onDevicesChanged = (devices: any[]) => {
-      console.log('Devices updated:', devices);
-      setAvailableDevices([...devices]); // Create new array to trigger React re-render
-    };
-
-    // Initialize devices
-    webrtcService.enumerateDevices();
+    initializeVoiceServices();
     
     return () => {
       webrtcService.onConnectionStateChange = null;
@@ -212,11 +230,27 @@ export default function Voice() {
     return '❌';
   };
 
-  if (!state?.ui?.initialized || !settings) {
+  if (!voiceServicesLoaded) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full"></div>
-        <span className="ml-3 text-slate-400">Loading voice services...</span>
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        {loadingError ? (
+          <div className="text-center">
+            <div className="text-red-400 text-lg mb-2">❌ Voice Services Error</div>
+            <p className="text-slate-400 mb-4">{loadingError}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+            <span className="text-slate-400">Loading voice services...</span>
+            <p className="text-sm text-slate-500 mt-2">Initializing audio devices and connections</p>
+          </div>
+        )}
       </div>
     );
   }

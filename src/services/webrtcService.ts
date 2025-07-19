@@ -12,6 +12,7 @@ class WebRTCService {
   private currentRoomId: string | null = null;
   private isHost: boolean = false;
   private signalingChannel: any = null;
+  private autoJoinEnabled: boolean = true;
 
   // Device management
   public availableDevices: MediaDevice[] = [];
@@ -298,6 +299,74 @@ class WebRTCService {
     console.log('Setting up signaling for room:', roomId);
     
     // This would integrate with Supabase real-time for signaling
+    // For now, we'll simulate the signaling
+    this.signalingChannel = {
+      send: (data: any) => {
+        console.log('Sending signaling data:', data);
+        // In a real implementation, this would send through Supabase
+      }
+    };
+  }
+
+  // Auto-join functionality
+  setAutoJoinEnabled(enabled: boolean): void {
+    this.autoJoinEnabled = enabled;
+    console.log('Auto-join voice chat:', enabled ? 'enabled' : 'disabled');
+  }
+
+  async autoJoinGameRoom(gameId: string, summonerName: string): Promise<void> {
+    if (!this.autoJoinEnabled) {
+      console.log('Auto-join disabled, skipping');
+      return;
+    }
+
+    console.log('Auto-joining voice room for game:', gameId);
+    
+    try {
+      const roomId = `arena_${gameId}`;
+      await this.joinRoom(roomId, summonerName);
+    } catch (error) {
+      console.error('Failed to auto-join voice room:', error);
+    }
+  }
+
+  // Leave current room
+  async leaveRoom(): Promise<void> {
+    console.log('Leaving voice room...');
+    
+    // Close peer connection
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+    }
+    
+    // Stop local stream
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(track => track.stop());
+      this.localStream = null;
+    }
+    
+    // Clean up signaling
+    this.signalingChannel = null;
+    this.currentRoomId = null;
+    
+    // Notify connection state change
+    if (this.onConnectionStateChange) {
+      this.onConnectionStateChange(false);
+    }
+  }
+
+  // Get current connection state
+  isConnected(): boolean {
+    return this.peerConnection?.connectionState === 'connected' || false;
+  }
+
+  // Mute/unmute microphone
+  setMuted(muted: boolean): void {
+    if (this.localStream) {
+      this.localStream.getAudioTracks().forEach(track => {
+        track.enabled = !muted;
+      });
     // For now, we'll create a mock signaling setup
     this.signalingChannel = {
       send: (message: any) => {
@@ -307,8 +376,30 @@ class WebRTCService {
     };
   }
 
+  // Auto-join functionality
+  setAutoJoinEnabled(enabled: boolean): void {
+    this.autoJoinEnabled = enabled;
+    console.log('Auto-join voice chat:', enabled ? 'enabled' : 'disabled');
+  }
+
+  async autoJoinGameRoom(gameId: string, summonerName: string): Promise<void> {
+    if (!this.autoJoinEnabled) {
+      console.log('Auto-join disabled, skipping');
+      return;
+    }
+
+    console.log('Auto-joining voice room for game:', gameId);
+    
+    try {
+      const roomId = `arena_${gameId}`;
+      await this.joinRoom(roomId, summonerName);
+    } catch (error) {
+      console.error('Failed to auto-join voice room:', error);
+    }
+  }
+
   // Set muted state
-  async setMuted(muted: boolean): Promise<void> {
+  setMuted(muted: boolean): void {
     console.log('Setting muted state:', muted);
     
     if (this.localStream) {
@@ -343,6 +434,11 @@ class WebRTCService {
     if (this.onConnectionStateChange) {
       this.onConnectionStateChange(false);
     }
+  }
+
+  // Get current connection state
+  isConnected(): boolean {
+    return this.peerConnection?.connectionState === 'connected' || false;
   }
 }
 

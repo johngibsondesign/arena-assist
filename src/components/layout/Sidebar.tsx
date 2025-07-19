@@ -14,7 +14,13 @@ const navigationItems: NavItem[] = [
     path: '/',
     label: 'Home',
     icon: '🏠',
-    description: 'Dashboard & Match Summary',
+    description: 'Dashboard & Search',
+  },
+  {
+    path: '/profile',
+    label: 'Profile',
+    icon: '👤',
+    description: 'Your Arena Stats & History',
   },
   {
     path: '/champions',

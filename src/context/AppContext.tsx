@@ -8,6 +8,10 @@ interface GameState {
   champion: string | null;
   teamMate: string | null;
   matchId: string | null;
+  summonerName: string | null;
+  puuid: string | null;
+  region: string | null;
+  gamePhase: string | null; // 'None', 'Lobby', 'ChampSelect', 'InGame'
 }
 
 interface AppState {
@@ -38,12 +42,16 @@ interface AppState {
       supabaseUrl: string;
       supabaseKey: string;
     };
+    riotApi: {
+      region: string;
+    };
   };
   
   // UI state
   ui: {
     sidebarCollapsed: boolean;
     currentPage: string;
+    initialized: boolean;
     notifications: Array<{
       id: string;
       type: 'info' | 'success' | 'warning' | 'error';
@@ -92,6 +100,10 @@ const initialState: AppState = {
     champion: null,
     teamMate: null,
     matchId: null,
+    summonerName: null,
+    puuid: null,
+    region: null,
+    gamePhase: null,
   },
   settings: {
     hotkeys: {
@@ -116,10 +128,14 @@ const initialState: AppState = {
         supabaseUrl: apiKeys.SUPABASE_URL,
         supabaseKey: apiKeys.SUPABASE_KEY,
       },
+    riotApi: {
+      region: 'euw1',
+    },
   },
   ui: {
     sidebarCollapsed: false,
     currentPage: 'home',
+    initialized: true,
     notifications: [],
   },
   features: {
