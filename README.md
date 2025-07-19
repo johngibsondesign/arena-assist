@@ -19,6 +19,18 @@ A powerful desktop companion app for League of Legends' Arena game mode, built w
 - **📈 AI Duo Analysis**: Intelligent teammate suggestions for optimal synergy
 - **🎯 Round-by-Round Coaching**: Real-time feedback and strategic advice
 
+## 🔑 Setup & API Keys
+
+**Important:** Arena Assist requires API keys to function. For security, these are now stored as environment variables.
+
+📖 **[Complete API Key Setup Guide →](./API_KEYS_SETUP.md)**
+
+**Quick Start:**
+1. Copy `.env.example` to `.env.local`
+2. Get a Riot Games API key from [developer.riotgames.com](https://developer.riotgames.com/)
+3. Add your key to `.env.local`
+4. Restart the app
+
 ## 🛠️ Technology Stack
 
 - **Frontend**: Electron + React 18 + TypeScript

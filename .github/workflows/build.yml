@@ -36,6 +36,12 @@ jobs:
         CSC_IDENTITY_AUTO_DISCOVERY: false
         # GitHub token for publishing to releases
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        # API Keys from GitHub Secrets
+        VITE_RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+        VITE_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        VITE_DEFAULT_REGION: ${{ secrets.DEFAULT_REGION }}
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
