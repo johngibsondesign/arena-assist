@@ -21,22 +21,26 @@ jobs:
     - name: Install Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: 20
         cache: 'npm'
+
+    - name: Install system dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2-dev libgtk-3-dev libgbm-dev
 
     - name: Install dependencies
       run: npm ci
 
+    - name: Debug - List files
+      run: ls -la
+
     - name: Build Electron app
       run: npm run build
       env:
-        # This is needed for code signing on macOS and Windows
-        # You can add these later if you want code signing
-        CSC_LINK: ${{ secrets.CSC_LINK }}
-        CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-        # For Windows code signing
-        WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-        WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        # Skip code signing if certificates are not available
+        CSC_IDENTITY_AUTO_DISCOVERY: false
         # GitHub token for publishing to releases
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -44,13 +48,8 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dist-${{ matrix.os }}
-        path: |
-          release/*.exe
-          release/*.dmg
-          release/*.AppImage
-          release/*.zip
-          release/*.tar.gz
-          release/latest*.yml
+        path: release/
+        if-no-files-found: error
 
   release:
     needs: build
@@ -63,20 +62,13 @@ jobs:
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
+      with:
+        path: artifacts
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          dist-windows-latest/*.exe
-          dist-windows-latest/*.zip
-          dist-windows-latest/latest*.yml
-          dist-macos-latest/*.dmg
-          dist-macos-latest/*.zip
-          dist-macos-latest/latest*.yml
-          dist-ubuntu-latest/*.AppImage
-          dist-ubuntu-latest/*.tar.gz
-          dist-ubuntu-latest/latest*.yml
+        files: artifacts/**/*
         draft: false
         prerelease: false
         generate_release_notes: true
