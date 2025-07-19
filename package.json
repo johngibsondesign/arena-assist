@@ -53,7 +53,6 @@
     "appId": "com.arenaassist.app",
     "productName": "Arena Assist",
     "directories": {
-      "buildResources": "assets",
       "output": "release"
     },
     "files": [
@@ -67,12 +66,10 @@
       "repo": "arena-assist"
     },
     "mac": {
-      "icon": "assets/icon.icns",
       "target": "dmg",
       "category": "public.app-category.games"
     },
     "win": {
-      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -92,7 +89,6 @@
       "createStartMenuShortcut": true
     },
     "linux": {
-      "icon": "assets/icon.png",
       "target": [
         {
           "target": "AppImage",
