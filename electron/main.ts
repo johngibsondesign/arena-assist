@@ -90,6 +90,15 @@ autoUpdater.on('update-downloaded', () => {
 });
 
 function createMainWindow(): void {
+  console.log('Creating main window...');
+  
+  // Prevent creating multiple main windows
+  if (mainWindow) {
+    console.log('Main window already exists, focusing existing window');
+    mainWindow.focus();
+    return;
+  }
+  
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   
   mainWindow = new BrowserWindow({
@@ -142,9 +151,13 @@ function createMainWindow(): void {
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
+    console.log('Main window ready to show, arguments:', process.argv);
     // Only show if not launched minimized
     if (!process.argv.includes('--hidden')) {
+      console.log('Showing main window');
       mainWindow?.show();
+    } else {
+      console.log('Window launched hidden');
     }
   });
 }

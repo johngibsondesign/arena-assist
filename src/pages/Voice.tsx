@@ -115,7 +115,9 @@ export default function Voice() {
     setIsLoadingProfile(true);
     
     try {
-      const profile = await playerProfileService.getPlayerProfile(summonerName, settings.riotApi.region);
+      // Use a fallback region if settings aren't loaded yet
+      const region = settings?.riotApi?.region || 'euw1';
+      const profile = await playerProfileService.getPlayerProfile(summonerName, region);
       console.log('Loaded teammate profile:', profile);
       setTeammateProfile(profile);
     } catch (error) {
@@ -210,7 +212,7 @@ export default function Voice() {
     return '❌';
   };
 
-  if (!state.ui.initialized) {
+  if (!state?.ui?.initialized || !settings) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full"></div>
