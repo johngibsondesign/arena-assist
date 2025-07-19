@@ -367,78 +367,7 @@ class WebRTCService {
       this.localStream.getAudioTracks().forEach(track => {
         track.enabled = !muted;
       });
-    // For now, we'll create a mock signaling setup
-    this.signalingChannel = {
-      send: (message: any) => {
-        console.log('Would send signaling message:', message);
-        // Here we would use Supabase real-time to send the message
-      }
-    };
-  }
-
-  // Auto-join functionality
-  setAutoJoinEnabled(enabled: boolean): void {
-    this.autoJoinEnabled = enabled;
-    console.log('Auto-join voice chat:', enabled ? 'enabled' : 'disabled');
-  }
-
-  async autoJoinGameRoom(gameId: string, summonerName: string): Promise<void> {
-    if (!this.autoJoinEnabled) {
-      console.log('Auto-join disabled, skipping');
-      return;
     }
-
-    console.log('Auto-joining voice room for game:', gameId);
-    
-    try {
-      const roomId = `arena_${gameId}`;
-      await this.joinRoom(roomId, summonerName);
-    } catch (error) {
-      console.error('Failed to auto-join voice room:', error);
-    }
-  }
-
-  // Set muted state
-  setMuted(muted: boolean): void {
-    console.log('Setting muted state:', muted);
-    
-    if (this.localStream) {
-      this.localStream.getAudioTracks().forEach(track => {
-        track.enabled = !muted;
-      });
-    }
-  }
-
-  // Leave the current room
-  async leaveRoom(): Promise<void> {
-    console.log('Leaving voice room...');
-    
-    // Stop local stream
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
-      this.localStream = null;
-    }
-    
-    // Close peer connection
-    if (this.peerConnection) {
-      this.peerConnection.close();
-      this.peerConnection = null;
-    }
-    
-    // Clear room state
-    this.currentRoomId = null;
-    this.isHost = false;
-    this.signalingChannel = null;
-    
-    // Notify disconnection
-    if (this.onConnectionStateChange) {
-      this.onConnectionStateChange(false);
-    }
-  }
-
-  // Get current connection state
-  isConnected(): boolean {
-    return this.peerConnection?.connectionState === 'connected' || false;
   }
 }
 
