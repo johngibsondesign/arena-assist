@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabaseService, ArenaChampion, ArenaDuo, ArenaAugment, ArenaItem, ArenaSkillOrder, PrismaticItem, DuoQueueStats } from '../services/supabaseService';
 
@@ -170,9 +170,6 @@ export default function Champions() {
       case 'B': return { text: 'text-yellow-400', bg: 'bg-yellow-400/20', border: 'border-yellow-400/50' };
       case 'C': return { text: 'text-green-400', bg: 'bg-green-400/20', border: 'border-green-400/50' };
       case 'D': return { text: 'text-blue-400', bg: 'bg-blue-400/20', border: 'border-blue-400/50' };
-      default: return { text: 'text-gray-400', bg: 'bg-gray-400/20', border: 'border-gray-400/50' };
-    }
-  };
       default: return { text: 'text-gray-400', bg: 'bg-gray-400/20', border: 'border-gray-400/50' };
     }
   };
@@ -1350,54 +1347,6 @@ export default function Champions() {
                       );
                     })}
                   </div>
-                </div>
-              );
-            })}
-
-            {/* Empty State */}
-            {filteredDuoQueueStats.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                  </svg>
-                  No duo combinations found
-                </div>
-                <p className="text-gray-500">
-                  Try adjusting your search or tier filter
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="bg-black/10 border-l-3 border-primary-400 p-2 rounded-r">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-1">
-                                    <span className="text-primary-400 text-xs">↗</span>
-                                    <span className="text-gray-300 text-xs font-medium">Pick Rate</span>
-                                  </div>
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              <div className="bg-black/10 border-l-3 border-yellow-400 p-2 rounded-r">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-1">
-                                    <span className="text-yellow-400 text-xs">★</span>
-                                    <span className="text-gray-300 text-xs font-medium">Tier Score</span>
-                                  </div>
-                                  <span className="text-yellow-400 text-sm font-bold">
-                                    {duo.tier_score.toFixed(1)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               );
             })}
