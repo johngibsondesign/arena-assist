@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { LcuApiService } from '../services/lcuApi';
+import playerProfileService, { PlayerProfile } from '../services/playerProfileService';
 
 interface ArenaMatch {
   gameId: string;
@@ -30,41 +31,68 @@ const lcuApi = new LcuApiService();
 export default function Profile() {
   const { state, dispatch } = useApp();
   const [summonerData, setSummonerData] = useState<any>(null);
+  const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(null);
   const [arenaMatches, setArenaMatches] = useState<ArenaMatch[]>([]);
   const [championStats, setChampionStats] = useState<ChampionWinRate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [gamePhase, setGamePhase] = useState<string>('None');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeProfile = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         
-        // Get current summoner
+        // Get current summoner from LCU with region detection
         const summoner = await lcuApi.getCurrentSummoner();
         if (summoner) {
           setSummonerData(summoner);
           
-          // Update app state with summoner info
+          // Get detailed profile using LCU data with proper region and PUUID handling
+          const profile = await playerProfileService.getPlayerProfileFromLcu(summoner, summoner.region);
+          if (profile) {
+            setPlayerProfile(profile);
+            // Convert profile data to existing component format
+            setArenaMatches(profile.recentGames.map(game => ({
+              gameId: game.matchId,
+              champion: game.champion,
+              championImage: game.championImage,
+              placement: game.placement,
+              kills: game.kills,
+              deaths: game.deaths,
+              assists: game.assists,
+              timestamp: game.timestamp,
+              gameLength: game.gameLength,
+              augments: [] // Not available in profile service yet
+            })));
+            
+            setChampionStats(profile.mostPlayedChampions.map(champ => ({
+              championId: champ.name,
+              championName: champ.name,
+              championImage: champ.image,
+              gamesPlayed: champ.gamesPlayed,
+              wins: Math.round(champ.gamesPlayed * champ.winRate / 100),
+              winRate: champ.winRate,
+              avgPlacement: champ.avgPlacement
+            })));
+          }
+          
+          // Update app state with summoner info including region
           dispatch({
             type: 'SET_GAME_STATE',
             payload: {
               summonerName: summoner.displayName,
               puuid: summoner.puuid,
+              region: summoner.region || 'euw1',
             }
           });
-          
-          // Load Arena match history
-          const matches = await lcuApi.getArenaMatchHistory();
-          const processedMatches = await processArenaMatches(matches);
-          setArenaMatches(processedMatches);
-          
-          // Calculate champion stats from match history
-          const champStats = calculateChampionStats(processedMatches);
-          setChampionStats(champStats);
+        } else {
+          setError('League client not connected or summoner not found');
         }
       } catch (error) {
         console.error('Failed to initialize profile:', error);
+        setError('Failed to load profile data. Make sure League client is running.');
       } finally {
         setIsLoading(false);
       }
@@ -167,9 +195,37 @@ export default function Profile() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-400 mb-4">
+          <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          {error}
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (!summonerData) {
     return (
       <div className="text-center py-12">
+        <div className="text-slate-400 mb-4">
+          <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          </svg>
+          League of Legends client not detected
+        </div>
+        <p className="text-slate-500 mb-4">
+          Please make sure League of Legends is running and you're logged in
+        </p>
         <div className="text-red-400 text-xl mb-4">❌ League Client Not Found</div>
         <p className="text-slate-400">Please make sure League of Legends is running and try again.</p>
       </div>
@@ -188,7 +244,14 @@ export default function Profile() {
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-primary-400">{summonerData.displayName}</h1>
-            <p className="text-slate-400">Level {summonerData.summonerLevel}</p>
+            <div className="flex items-center space-x-4 text-slate-400">
+              <span>Level {summonerData.summonerLevel}</span>
+              {summonerData.region && (
+                <span className="text-primary-300 font-medium">
+                  {summonerData.region.toUpperCase()}
+                </span>
+              )}
+            </div>
             <div className="flex items-center space-x-2 mt-1">
               <span className="text-sm text-slate-500">Status:</span>
               <span className={`text-sm font-medium ${phaseDisplay.color}`}>

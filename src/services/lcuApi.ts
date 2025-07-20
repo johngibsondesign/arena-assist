@@ -35,6 +35,7 @@ export interface CurrentSummoner {
   internalName: string;
   profileIconId: number;
   summonerLevel: number;
+  region?: string; // Will be detected from client
 }
 
 export class LcuApiService {
@@ -43,14 +44,74 @@ export class LcuApiService {
   private credentials: string | null = null;
   private isClientConnected = false;
   private pollingInterval: NodeJS.Timeout | null = null;
+  private currentRegion: string | null = null;
   
   // Callbacks
   public onClientStatusChange: ((connected: boolean) => void) | null = null;
-  public onGamePhaseChange: ((phase: string) => void) | null = null;
+  public onGamePhaseChange: ((phase: string, gameData?: GameData) => void) | null = null;
 
   constructor() {
     this.detectClient();
     this.startPolling();
+  }
+
+  // PUUID format conversion utility
+  private convertPuuidFormat(puuid: string, toRiotApi: boolean = false): string {
+    if (!puuid) return puuid;
+    
+    if (toRiotApi) {
+      // Convert LCU format to Riot API format (add dashes)
+      if (puuid.length === 32 && !puuid.includes('-')) {
+        return [
+          puuid.slice(0, 8),
+          puuid.slice(8, 12),
+          puuid.slice(12, 16),
+          puuid.slice(16, 20),
+          puuid.slice(20, 32)
+        ].join('-');
+      }
+    } else {
+      // Convert Riot API format to LCU format (remove dashes)
+      if (puuid.includes('-')) {
+        return puuid.replace(/-/g, '');
+      }
+    }
+    
+    return puuid;
+  }
+
+  // Detect region from client data
+  private async detectRegion(): Promise<string | null> {
+    try {
+      if (!this.isClientConnected || !this.port || !this.credentials) {
+        return null;
+      }
+
+      const response = await this.makeRequest('/lol-rso-auth/v1/authorization');
+      if (response && response.currentPlatformId) {
+        // Map platform IDs to regions
+        const platformToRegion: { [key: string]: string } = {
+          'NA1': 'na1',
+          'EUW1': 'euw1',
+          'EUNE1': 'eun1',
+          'KR': 'kr',
+          'JP1': 'jp1',
+          'BR1': 'br1',
+          'LA1': 'la1',
+          'LA2': 'la2',
+          'OC1': 'oc1',
+          'TR1': 'tr1',
+          'RU': 'ru'
+        };
+        
+        this.currentRegion = platformToRegion[response.currentPlatformId] || response.currentPlatformId.toLowerCase();
+        return this.currentRegion;
+      }
+    } catch (error) {
+      console.error('Error detecting region:', error);
+    }
+    
+    return null;
   }
 
   private async detectClient(): Promise<void> {
@@ -123,13 +184,18 @@ export class LcuApiService {
       
       if (wasConnected !== this.isClientConnected && this.onClientStatusChange) {
         this.onClientStatusChange(this.isClientConnected);
+        
+        // When client connects, detect region
+        if (this.isClientConnected) {
+          await this.detectRegion();
+        }
       }
       
       if (this.isClientConnected) {
         try {
           const gameflow = await this.getGameflowSession();
           if (gameflow && this.onGamePhaseChange) {
-            this.onGamePhaseChange(gameflow.phase);
+            this.onGamePhaseChange(gameflow.phase, gameflow.gameData);
           }
         } catch (error) {
           // Ignore errors during polling
@@ -205,6 +271,12 @@ export class LcuApiService {
   async getCurrentSummoner(): Promise<CurrentSummoner | null> {
     try {
       const data = await this.makeRequest('/lol-summoner/v1/current-summoner');
+      
+      // Ensure region is detected
+      if (!this.currentRegion) {
+        await this.detectRegion();
+      }
+      
       return {
         puuid: data.puuid,
         summonerId: data.summonerId,
@@ -212,6 +284,7 @@ export class LcuApiService {
         internalName: data.internalName,
         profileIconId: data.profileIconId,
         summonerLevel: data.summonerLevel,
+        region: this.currentRegion || undefined,
       };
     } catch (error) {
       console.error('Failed to get current summoner:', error);
@@ -364,6 +437,21 @@ export class LcuApiService {
         teammate: null,
       };
     }
+  }
+
+  // Public method to get formatted PUUID for Riot API
+  public getPuuidForRiotApi(puuid: string): string {
+    return this.convertPuuidFormat(puuid, true);
+  }
+
+  // Public method to get current region
+  public getCurrentRegion(): string | null {
+    return this.currentRegion;
+  }
+
+  // Public method to force region detection
+  public async refreshRegion(): Promise<string | null> {
+    return await this.detectRegion();
   }
 
   // Polling method to continuously check game state

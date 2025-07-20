@@ -28,6 +28,24 @@ export interface ArenaDuo {
   updated_at: string;
 }
 
+export interface DuoQueueStats {
+  id: number;
+  champion1Id: string;
+  champion2Id: string;
+  tierRank: 'S' | 'A' | 'B' | 'C' | 'D';
+  tierPosition: number;
+  score: number;
+  winRate: number;
+  top2Rate: number;
+  avgPlacement: number;
+  pickRate: number;
+  synergyDescription?: string;
+  strengths?: string;
+  weaknesses?: string;
+  playstyleNotes?: string;
+  updatedAt: string;
+}
+
 export interface ArenaAugment {
   id: number;
   champion_id: string;
@@ -185,6 +203,118 @@ class SupabaseService {
       console.error('Error fetching top duos:', error);
       return [];
     }
+  }
+
+  // ── DUO QUEUE STATS ────────────────────────────────────────────────────────
+
+  async getAllDuoQueueStats(tierFilter?: string): Promise<DuoQueueStats[]> {
+    try {
+      let query = this.supabase
+        .from('arena_duo_queue_stats')
+        .select('*')
+        .order('tier_rank', { ascending: true })
+        .order('tier_position', { ascending: true });
+
+      if (tierFilter && tierFilter !== 'ALL') {
+        query = query.eq('tier_rank', tierFilter);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data?.map(this.mapDatabaseToDuoQueueStats) || [];
+    } catch (error) {
+      console.error('Error fetching duo queue stats:', error);
+      return [];
+    }
+  }
+
+  async getDuoQueueStatsForChampion(championId: string): Promise<DuoQueueStats[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('arena_duo_queue_pairs')
+        .select('*')
+        .eq('champion_1_id', championId)
+        .order('score', { ascending: false });
+
+      if (error) throw error;
+      return data?.map(this.mapDatabaseToDuoQueueStats) || [];
+    } catch (error) {
+      console.error('Error fetching champion duo queue stats:', error);
+      return [];
+    }
+  }
+
+  async getTopPartnersForChampion(championId: string, limit: number = 5): Promise<DuoQueueStats[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('arena_duo_queue_pairs')
+        .select('*')
+        .eq('champion_1_id', championId)
+        .order('score', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data?.map(this.mapDatabaseToDuoQueueStats) || [];
+    } catch (error) {
+      console.error('Error fetching top partners:', error);
+      return [];
+    }
+  }
+
+  async getSpecificDuoStats(champion1: string, champion2: string): Promise<DuoQueueStats | null> {
+    try {
+      const [champ1, champ2] = [champion1, champion2].sort();
+
+      const { data, error } = await this.supabase
+        .from('arena_duo_queue_stats')
+        .select('*')
+        .eq('champion_1_id', champ1)
+        .eq('champion_2_id', champ2)
+        .single();
+
+      if (error) throw error;
+      return data ? this.mapDatabaseToDuoQueueStats(data) : null;
+    } catch (error) {
+      console.error('Error fetching specific duo stats:', error);
+      return null;
+    }
+  }
+
+  async searchDuosByChampion(searchTerm: string): Promise<DuoQueueStats[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('arena_duo_queue_stats')
+        .select('*')
+        .or(`champion_1_id.ilike.%${searchTerm}%,champion_2_id.ilike.%${searchTerm}%`)
+        .order('score', { ascending: false });
+
+      if (error) throw error;
+      return data?.map(this.mapDatabaseToDuoQueueStats) || [];
+    } catch (error) {
+      console.error('Error searching duo queue stats:', error);
+      return [];
+    }
+  }
+
+  private mapDatabaseToDuoQueueStats(row: any): DuoQueueStats {
+    return {
+      id: row.id,
+      champion1Id: row.champion_1_id,
+      champion2Id: row.champion_2_id,
+      tierRank: row.tier_rank,
+      tierPosition: row.tier_position,
+      score: row.score,
+      winRate: row.win_rate,
+      top2Rate: row.top_2_rate,
+      avgPlacement: row.avg_placement,
+      pickRate: row.pick_rate,
+      synergyDescription: row.synergy_description,
+      strengths: row.strengths,
+      weaknesses: row.weaknesses,
+      playstyleNotes: row.playstyle_notes,
+      updatedAt: row.updated_at
+    };
   }
 
   // ── AUGMENTS ───────────────────────────────────────────────────────────────

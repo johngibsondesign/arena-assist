@@ -164,40 +164,100 @@ class PlayerProfileService {
       const summonerUrl = `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}`;
       const summoner: RiotSummoner = await this.makeRiotRequest(summonerUrl);
 
-      // Step 3: Get recent Arena matches
-      const matchRegion = this.getMatchRegion(region);
-      const matchHistoryUrl = `https://${matchRegion}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?queue=${this.ARENA_QUEUE_ID}&start=0&count=20`;
-      
-      let matchIds: string[] = [];
+      return this.buildPlayerProfile(summoner, account, region);
+    } catch (error) {
+      console.error('Failed to get player profile:', error);
+      return null;
+    }
+  }
+
+  // Method to get profile using LCU summoner data with proper PUUID handling
+  async getPlayerProfileFromLcu(lcuSummoner: any, region?: string): Promise<PlayerProfile | null> {
+    try {
+      const effectiveRegion = region || lcuSummoner.region || 'euw1';
+      console.log(`Fetching profile from LCU data for ${lcuSummoner.displayName} on ${effectiveRegion}`);
+
+      // Convert LCU PUUID format to Riot API format (add dashes)
+      const riotApiPuuid = this.convertPuuidToRiotApi(lcuSummoner.puuid);
+
+      // Create account-like object from LCU data
+      const account: RiotAccount = {
+        puuid: riotApiPuuid,
+        gameName: lcuSummoner.gameName || lcuSummoner.displayName,
+        tagLine: lcuSummoner.tagLine || 'EUW' // Fallback tagline
+      };
+
+      // Create summoner-like object from LCU data
+      const summoner: RiotSummoner = {
+        id: lcuSummoner.summonerId.toString(),
+        accountId: lcuSummoner.accountId?.toString() || '',
+        puuid: riotApiPuuid,
+        name: lcuSummoner.displayName,
+        profileIconId: lcuSummoner.profileIconId,
+        summonerLevel: lcuSummoner.summonerLevel
+      };
+
+      return this.buildPlayerProfile(summoner, account, effectiveRegion);
+    } catch (error) {
+      console.error('Failed to get player profile from LCU:', error);
+      return null;
+    }
+  }
+
+  // Utility to convert LCU PUUID format to Riot API format
+  private convertPuuidToRiotApi(lcuPuuid: string): string {
+    if (!lcuPuuid) return lcuPuuid;
+    
+    // If PUUID is 32 chars without dashes, add dashes for Riot API
+    if (lcuPuuid.length === 32 && !lcuPuuid.includes('-')) {
+      return [
+        lcuPuuid.slice(0, 8),
+        lcuPuuid.slice(8, 12),
+        lcuPuuid.slice(12, 16),
+        lcuPuuid.slice(16, 20),
+        lcuPuuid.slice(20, 32)
+      ].join('-');
+    }
+    
+    return lcuPuuid;
+  }
+
+  // Private method to build player profile from summoner and account data
+  private async buildPlayerProfile(summoner: RiotSummoner, account: RiotAccount, region: string): Promise<PlayerProfile> {
+    // Get recent Arena matches
+    const matchRegion = this.getMatchRegion(region);
+    const matchHistoryUrl = `https://${matchRegion}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?queue=${this.ARENA_QUEUE_ID}&start=0&count=20`;
+    
+    let matchIds: string[] = [];
+    try {
+      matchIds = await this.makeRiotRequest(matchHistoryUrl);
+    } catch (error) {
+      console.warn('Could not fetch match history:', error);
+      // Continue without matches
+    }
+
+    // Get detailed match data for recent games
+    const recentMatches: ArenaMatch[] = [];
+    const championStats = new Map<string, { games: number, wins: number, placements: number[], kda: { kills: number, deaths: number, assists: number } }>();
+
+    for (const matchId of matchIds.slice(0, 10)) {
       try {
-        matchIds = await this.makeRiotRequest(matchHistoryUrl);
-      } catch (error) {
-        console.warn('Could not fetch match history:', error);
-        // Continue without matches
-      }
+        const matchUrl = `https://${matchRegion}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+        const match: RiotMatch = await this.makeRiotRequest(matchUrl);
 
-      // Step 4: Get detailed match data for recent games
-      const recentMatches: ArenaMatch[] = [];
-      const championStats = new Map<string, { games: number, wins: number, placements: number[], kda: { kills: number, deaths: number, assists: number } }>();
+        // Skip non-arena matches
+        if (match.info.queueId !== this.ARENA_QUEUE_ID) continue;
 
-      for (const matchId of matchIds.slice(0, 10)) {
-        try {
-          const matchUrl = `https://${matchRegion}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
-          const match: RiotMatch = await this.makeRiotRequest(matchUrl);
+        const participant = match.info.participants.find(p => p.puuid === account.puuid);
+        if (!participant) continue;
 
-          // Skip non-arena matches
-          if (match.info.queueId !== this.ARENA_QUEUE_ID) continue;
+        const championName = participant.championName;
+        const placement = participant.placement || participant.subteamPlacement || 8;
+        const kills = participant.kills || 0;
+        const deaths = participant.deaths || 0;
+        const assists = participant.assists || 0;
 
-          const participant = match.info.participants.find(p => p.puuid === account.puuid);
-          if (!participant) continue;
-
-          const championName = participant.championName;
-          const placement = participant.placement || participant.subteamPlacement || 8;
-          const kills = participant.kills || 0;
-          const deaths = participant.deaths || 0;
-          const assists = participant.assists || 0;
-
-          // Add to recent matches (limit to 5 for display)
+        // Add to recent matches (limit to 5 for display)
           if (recentMatches.length < 5) {
             recentMatches.push({
               matchId: match.metadata.matchId,
@@ -254,7 +314,7 @@ class PlayerProfileService {
         .slice(0, 3);
 
       return {
-        summonerName: `${gameName}#${tagLine}`,
+        summonerName: `${account.gameName}#${account.tagLine}`,
         profileIconId: summoner.profileIconId,
         summonerLevel: summoner.summonerLevel,
         region: region.toUpperCase(),
@@ -262,12 +322,7 @@ class PlayerProfileService {
         recentGames: recentMatches,
         mostPlayedChampions: mostPlayedChampions,
       };
-
-    } catch (error) {
-      console.error('Failed to fetch player profile:', error);
-      return null;
     }
-  }
 
   private formatGameDuration(seconds: number): string {
     const minutes = Math.floor(seconds / 60);

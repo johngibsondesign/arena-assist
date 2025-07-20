@@ -51,40 +51,91 @@ function AppContent() {
       }
     };
 
-    lcuService.onGamePhaseChange = (phase: string) => {
-      console.log('Game phase changed:', phase);
+    lcuService.onGamePhaseChange = (phase: string, gameData?: any) => {
+      console.log('Game phase changed:', phase, gameData);
       
       dispatch({
         type: 'SET_GAME_STATE',
         payload: {
           gamePhase: phase,
           isInGame: phase === 'InProgress' || phase === 'GameStart',
+          gameData: gameData
         }
       });
 
       // Auto-navigate based on game phase
-      if (phase === 'ChampSelect') {
-        navigate('/champions'); // Show champion recommendations
-      } else if (phase === 'InProgress' || phase === 'GameStart') {
-        // Check if Arena mode and navigate to champion page
-        lcuService.getCurrentChampion().then(champion => {
-          if (champion) {
-            dispatch({
-              type: 'SET_GAME_STATE',
-              payload: { champion }
-            });
-            navigate('/champions'); // Show current champion info
+      switch (phase) {
+        case 'Lobby':
+        case 'Matchmaking':
+          // In lobby or queue - stay on profile or go to it
+          if (location.pathname === '/overlay' || location.pathname === '/augments') {
+            navigate('/profile');
           }
-        });
+          break;
         
-        // Auto-join voice chat if enabled and summoner name is available
-        const summonerName = state.game.summonerName;
-        if (summonerName) {
-          console.log('Game started, triggering auto-join voice chat...');
-          import('./services/webrtcService').then(({ default: webrtcService }) => {
-            webrtcService.autoJoinGameRoom(phase, summonerName);
+        case 'ChampSelect':
+          // Champion select - show champions page for reference
+          if (!isOverlay && location.pathname !== '/champions') {
+            navigate('/champions');
+          }
+          break;
+        
+        case 'InProgress':
+        case 'GameStart':
+          // In game - check if it's Arena and show appropriate page
+          if (gameData?.queue?.id === 1700) { // Arena queue
+            if (!isOverlay && location.pathname !== '/augments') {
+              navigate('/augments');
+            }
+          } else {
+            // Other game modes - show champions page
+            if (!isOverlay && location.pathname !== '/champions') {
+              navigate('/champions');
+            }
+          }
+          
+          // Get current champion and update state
+          lcuService.getCurrentChampion().then(champion => {
+            if (champion) {
+              dispatch({
+                type: 'SET_GAME_STATE',
+                payload: { champion }
+              });
+            }
           });
-        }
+          
+          // Auto-join voice chat if enabled and summoner name is available
+          const summonerName = state.game.summonerName;
+          if (summonerName) {
+            console.log('Game started, triggering auto-join voice chat...');
+            import('./services/webrtcService').then(({ default: webrtcService }) => {
+              webrtcService.autoJoinGameRoom(phase, summonerName);
+            });
+          }
+          break;
+        
+        case 'WaitingForStats':
+        case 'PreEndOfGame':
+        case 'EndOfGame':
+          // Game ending - go back to profile
+          if (location.pathname === '/overlay' || location.pathname === '/augments') {
+            navigate('/profile');
+          }
+          break;
+        
+        case 'None':
+        default:
+          // No active game - clear game state
+          dispatch({
+            type: 'SET_GAME_STATE',
+            payload: {
+              gamePhase: 'None',
+              isInGame: false,
+              champion: null,
+              gameData: null
+            }
+          });
+          break;
       }
     };
 

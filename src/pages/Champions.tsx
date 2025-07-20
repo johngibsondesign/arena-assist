@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabaseService, ArenaChampion, ArenaDuo, ArenaAugment, ArenaItem, ArenaSkillOrder, PrismaticItem } from '../services/supabaseService';
+import { useNavigate } from 'react-router-dom';
+import { supabaseService, ArenaChampion, ArenaDuo, ArenaAugment, ArenaItem, ArenaSkillOrder, PrismaticItem, DuoQueueStats } from '../services/supabaseService';
 
 type ViewMode = 'list' | 'detail';
 
 export default function Champions() {
+  const navigate = useNavigate();
+  
   // Main data
   const [champions, setChampions] = useState<ArenaChampion[]>([]);
   const [duos, setDuos] = useState<ArenaDuo[]>([]);
+  const [duoQueueStats, setDuoQueueStats] = useState<DuoQueueStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // View state
@@ -35,12 +39,14 @@ export default function Champions() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [championsData, duosData] = await Promise.all([
+      const [championsData, duosData, duoQueueData] = await Promise.all([
         supabaseService.getTopChampions(200), // Increased to get all champions
-        supabaseService.getTopDuos(50)
+        supabaseService.getTopDuos(50),
+        supabaseService.getAllDuoQueueStats() // Load new duo queue stats
       ]);
       setChampions(championsData);
       setDuos(duosData);
+      setDuoQueueStats(duoQueueData);
     } catch (error) {
       console.error('Failed to load champion data:', error);
     } finally {
@@ -133,15 +139,40 @@ export default function Champions() {
            duo.champion2.toLowerCase().includes(query);
   });
 
+  // Filter enhanced duo queue stats
+  const filteredDuoQueueStats = duoQueueStats.filter(duo => {
+    const query = searchQuery.toLowerCase();
+    const tierMatch = selectedTier === 'all' || duo.tierRank === selectedTier;
+    
+    return tierMatch && (
+      !searchQuery || 
+      duo.champion1Id.toLowerCase().includes(query) || 
+      duo.champion2Id.toLowerCase().includes(query)
+    );
+  });
+
+  // Handler for champion click navigation
+  const handleChampionClick = (championName: string) => {
+    const champion = champions.find(c => c.name === championName);
+    if (champion) {
+      setSelectedChampion(champion);
+      setViewMode('detail');
+      loadChampionDetails(champion);
+    }
+  };
+
   // Utility functions
   const getTierStyling = (tier: string) => {
     switch (tier) {
       case 'S+': return { text: 'text-yellow-400', bg: 'bg-yellow-400/20', border: 'border-yellow-400/50' };
-      case 'S': return { text: 'text-orange-400', bg: 'bg-orange-400/20', border: 'border-orange-400/50' };
-      case 'A': return { text: 'text-green-400', bg: 'bg-green-400/20', border: 'border-green-400/50' };
-      case 'B': return { text: 'text-blue-400', bg: 'bg-blue-400/20', border: 'border-blue-400/50' };
-      case 'C': return { text: 'text-purple-400', bg: 'bg-purple-400/20', border: 'border-purple-400/50' };
-      case 'D': return { text: 'text-gray-400', bg: 'bg-gray-400/20', border: 'border-gray-400/50' };
+      case 'S': return { text: 'text-red-400', bg: 'bg-red-400/20', border: 'border-red-400/50' };
+      case 'A': return { text: 'text-orange-400', bg: 'bg-orange-400/20', border: 'border-orange-400/50' };
+      case 'B': return { text: 'text-yellow-400', bg: 'bg-yellow-400/20', border: 'border-yellow-400/50' };
+      case 'C': return { text: 'text-green-400', bg: 'bg-green-400/20', border: 'border-green-400/50' };
+      case 'D': return { text: 'text-blue-400', bg: 'bg-blue-400/20', border: 'border-blue-400/50' };
+      default: return { text: 'text-gray-400', bg: 'bg-gray-400/20', border: 'border-gray-400/50' };
+    }
+  };
       default: return { text: 'text-gray-400', bg: 'bg-gray-400/20', border: 'border-gray-400/50' };
     }
   };
@@ -1172,82 +1203,173 @@ export default function Champions() {
           </div>
             )}
 
-                {/* Duo Tab */}
+                {/* Enhanced Duo Queue Tab */}
         {!isLoading && activeTab === 'duo' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-primary-400">Duo Queue Combinations</h2>
-              <span className="text-sm text-gray-400">
-                Showing {filteredDuos.length} duo combinations
-              </span>
-        </div>
+              <h2 className="text-xl font-semibold text-primary-400">Duo Queue Meta</h2>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-400">
+                  {filteredDuoQueueStats.length} duo combinations
+                </span>
+                <select
+                  value={selectedTier}
+                  onChange={(e) => setSelectedTier(e.target.value)}
+                  className="px-3 py-1 bg-gray-800 border border-gray-600 rounded text-sm text-white"
+                >
+                  <option value="all">All Tiers</option>
+                  <option value="S">S Tier</option>
+                  <option value="A">A Tier</option>
+                  <option value="B">B Tier</option>
+                  <option value="C">C Tier</option>
+                  <option value="D">D Tier</option>
+                </select>
+              </div>
+            </div>
 
-            {/* Organize duos by tiers */}
-            {['S+', 'S', 'A', 'B', 'C', 'D'].map(tierRank => {
-              const duosInTier = filteredDuos.filter(duo => getDuoTierRank(duo.tier_score) === tierRank);
+            {/* Enhanced Duo Queue Stats */}
+            {['S', 'A', 'B', 'C', 'D'].map(tierRank => {
+              const duosInTier = filteredDuoQueueStats.filter(duo => duo.tierRank === tierRank);
               if (duosInTier.length === 0) return null;
 
               const tierStyle = getTierStyling(tierRank);
 
               return (
                 <div key={tierRank} className="space-y-4">
-                <div className="flex items-center space-x-3">
-                    <div className={`w-6 h-6 rounded ${tierStyle.bg} ${tierStyle.border} border flex items-center justify-center`}>
-                      <span className={`text-xs font-bold ${tierStyle.text}`}>{tierRank}</span>
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 rounded ${tierStyle.bg} ${tierStyle.border} border flex items-center justify-center`}>
+                      <span className={`text-sm font-bold ${tierStyle.text}`}>{tierRank}</span>
                     </div>
-                    <h3 className={`text-lg font-semibold ${tierStyle.text}`}>{tierRank} Tier Duos</h3>
+                    <h3 className={`text-lg font-semibold ${tierStyle.text}`}>{tierRank} Tier</h3>
                     <span className="text-gray-400 text-sm">({duosInTier.length})</span>
                   </div>
 
-                  {/* Grid View */}
-                  {viewType === 'grid' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {duosInTier.map((duo) => {
-                        const duoTierStyle = getTierStyling(getDuoTierRank(duo.tier_score));
-                        return (
-                          <div
-                            key={duo.id}
-                            className={`p-4 rounded-lg border transition-all duration-200 hover:scale-105 ${duoTierStyle.bg} ${duoTierStyle.border}`}
-                          >
-                            {/* Win Rate Badge */}
-                            <div className="flex justify-center mb-3">
-                              <span className="px-3 py-1 rounded text-sm font-bold text-green-400 bg-green-400/20">
-                                Win rate: {formatPercentage(duo.win_rate)}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {duosInTier.map((duo) => {
+                      const duoTierStyle = getTierStyling(duo.tierRank);
+                      return (
+                        <div
+                          key={duo.id}
+                          className={`p-6 rounded-lg border transition-all duration-200 hover:scale-[1.02] ${duoTierStyle.bg} ${duoTierStyle.border}`}
+                        >
+                          {/* Header with Score */}
+                          <div className="flex justify-between items-center mb-4">
+                            <div className={`px-3 py-1 rounded ${duoTierStyle.bg} ${duoTierStyle.border} border`}>
+                              <span className={`text-sm font-bold ${duoTierStyle.text}`}>
+                                Score: {duo.score.toFixed(1)}
                               </span>
                             </div>
+                            <div className="text-xs text-gray-400">
+                              #{duo.tierPosition} in {duo.tierRank}
+                            </div>
+                          </div>
 
-                            {/* Duo Champions */}
-                            <div className="flex items-center justify-center space-x-3 mb-4">
-                              <div className="flex items-center space-x-2">
-                                <img
-                                  src={duo.champion1_image_url}
-                                  alt={duo.champion1}
-                                  className="w-10 h-10 rounded"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${duo.champion1}.png`;
-                                  }}
-                                />
-                                <span className="font-semibold text-white text-sm">{duo.champion1}</span>
+                          {/* Champions */}
+                          <div className="flex items-center justify-center space-x-4 mb-6">
+                            <div 
+                              className="flex flex-col items-center space-y-2 cursor-pointer hover:scale-110 transition-transform"
+                              onClick={() => handleChampionClick(duo.champion1Id)}
+                            >
+                              <img
+                                src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${duo.champion1Id}.png`}
+                                alt={duo.champion1Id}
+                                className="w-16 h-16 rounded-lg border-2 border-gray-600 hover:border-primary-400"
+                              />
+                              <span className="text-white text-sm font-medium">{duo.champion1Id}</span>
+                            </div>
+                            
+                            <div className="text-primary-400 text-2xl font-bold">+</div>
+                            
+                            <div 
+                              className="flex flex-col items-center space-y-2 cursor-pointer hover:scale-110 transition-transform"
+                              onClick={() => handleChampionClick(duo.champion2Id)}
+                            >
+                              <img
+                                src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${duo.champion2Id}.png`}
+                                alt={duo.champion2Id}
+                                className="w-16 h-16 rounded-lg border-2 border-gray-600 hover:border-primary-400"
+                              />
+                              <span className="text-white text-sm font-medium">{duo.champion2Id}</span>
+                            </div>
+                          </div>
+
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div className="text-center">
+                              <div className="text-green-400 text-lg font-bold">{duo.winRate.toFixed(1)}%</div>
+                              <div className="text-gray-400 text-xs">Win Rate</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-yellow-400 text-lg font-bold">{duo.top2Rate.toFixed(1)}%</div>
+                              <div className="text-gray-400 text-xs">Top 2</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-blue-400 text-lg font-bold">{duo.avgPlacement.toFixed(1)}</div>
+                              <div className="text-gray-400 text-xs">Avg Place</div>
+                            </div>
+                          </div>
+
+                          {/* Pick Rate */}
+                          <div className="text-center mb-4">
+                            <div className="text-purple-400 text-sm font-medium">{duo.pickRate.toFixed(1)}% Pick Rate</div>
+                          </div>
+
+                          {/* Synergy Description */}
+                          {duo.synergyDescription && (
+                            <div className="bg-black/20 rounded-lg p-3 mb-3">
+                              <p className="text-gray-300 text-sm">{duo.synergyDescription}</p>
+                            </div>
+                          )}
+
+                          {/* Strengths and Weaknesses */}
+                          <div className="space-y-2">
+                            {duo.strengths && (
+                              <div className="flex items-start space-x-2">
+                                <span className="text-green-400 text-xs mt-0.5">+</span>
+                                <p className="text-green-300 text-xs">{duo.strengths}</p>
                               </div>
-                              
-                              <div className="text-primary-400 font-bold">+</div>
-                              
-                              <div className="flex items-center space-x-2">
-                                <img
-                                  src={duo.champion2_image_url}
-                                  alt={duo.champion2}
-                                  className="w-10 h-10 rounded"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${duo.champion2}.png`;
-                                  }}
-                                />
-                                <span className="font-semibold text-white text-sm">{duo.champion2}</span>
+                            )}
+                            {duo.weaknesses && (
+                              <div className="flex items-start space-x-2">
+                                <span className="text-red-400 text-xs mt-0.5">-</span>
+                                <p className="text-red-300 text-xs">{duo.weaknesses}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Playstyle Notes */}
+                          {duo.playstyleNotes && (
+                            <div className="mt-3 pt-3 border-t border-gray-600">
+                              <div className="flex items-start space-x-2">
+                                <span className="text-blue-400 text-xs mt-0.5">💡</span>
+                                <p className="text-blue-300 text-xs italic">{duo.playstyleNotes}</p>
                               </div>
                             </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
 
-                            {/* Duo Stats */}
+            {/* Empty State */}
+            {filteredDuoQueueStats.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                  </svg>
+                  No duo combinations found
+                </div>
+                <p className="text-gray-500">
+                  Try adjusting your search or tier filter
+                </p>
+              </div>
+            )}
+          </div>
+        )}
                             <div className="grid grid-cols-2 gap-3">
                               <div className="bg-black/10 border-l-3 border-primary-400 p-2 rounded-r">
                                 <div className="flex items-center justify-between">
@@ -1255,8 +1377,6 @@ export default function Champions() {
                                     <span className="text-primary-400 text-xs">↗</span>
                                     <span className="text-gray-300 text-xs font-medium">Pick Rate</span>
                                   </div>
-                                  <span className="text-primary-400 text-sm font-bold">
-                                    {formatPercentage(duo.pick_rate)}
                                   </span>
                                 </div>
                               </div>
@@ -1278,78 +1398,29 @@ export default function Champions() {
                       })}
                     </div>
                   )}
-
-                  {/* List View */}
-                  {viewType === 'list' && (
-                    <div className="space-y-3">
-                      {duosInTier.map((duo) => {
-                        const duoTierStyle = getTierStyling(getDuoTierRank(duo.tier_score));
-                        return (
-                          <div
-                            key={duo.id}
-                            className={`p-4 rounded-lg border transition-all duration-200 hover:scale-[1.02] ${duoTierStyle.bg} ${duoTierStyle.border}`}
-                          >
-                            <div className="flex items-center space-x-6">
-                              {/* Duo Champions */}
-                              <div className="flex items-center space-x-4 flex-shrink-0">
-                  <div className="flex items-center space-x-2">
-                    <img 
-                      src={duo.champion1_image_url} 
-                      alt={duo.champion1}
-                                    className="w-12 h-12 rounded"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.src = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${duo.champion1}.png`;
-                                    }}
-                                  />
-                                  <span className="font-semibold text-white text-base">{duo.champion1}</span>
-                                </div>
-                                
-                                <div className="text-primary-400 font-bold text-lg">+</div>
-                                
-                                <div className="flex items-center space-x-2">
-                    <img 
-                      src={duo.champion2_image_url} 
-                      alt={duo.champion2}
-                                    className="w-12 h-12 rounded"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.src = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${duo.champion2}.png`;
-                                    }}
-                                  />
-                                  <span className="font-semibold text-white text-base">{duo.champion2}</span>
-                                </div>
-                              </div>
-
-                              {/* Stats in List Format */}
-                              <div className="flex items-center space-x-6 ml-auto">
-                                <div className="text-center">
-                                  <div className="text-primary-400 text-base font-bold">{formatPercentage(duo.pick_rate)}</div>
-                                  <div className="text-gray-300 text-xs">Pick Rate</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-green-400 text-base font-bold">{formatPercentage(duo.win_rate)}</div>
-                                  <div className="text-gray-300 text-xs">Win Rate</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-yellow-400 text-base font-bold">{duo.tier_score.toFixed(1)}</div>
-                                  <div className="text-gray-300 text-xs">Tier Score</div>
-                                </div>
-                              </div>
-                            </div>
-                  </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               );
             })}
+
+            {/* Empty State */}
+            {filteredDuoQueueStats.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                  </svg>
+                  No duo combinations found
+                </div>
+                <p className="text-gray-500">
+                  Try adjusting your search or tier filter
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* No Data */}
-        {!isLoading && ((activeTab === 'solo' && filteredChampions.length === 0) || (activeTab === 'duo' && filteredDuos.length === 0)) && (
+        {!isLoading && ((activeTab === 'solo' && filteredChampions.length === 0) || (activeTab === 'duo' && filteredDuoQueueStats.length === 0)) && (
           <div className="text-center py-12 text-gray-400">
             <div className="text-4xl mb-4">📊</div>
             <p>No {activeTab} data found</p>

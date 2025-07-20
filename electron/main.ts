@@ -24,8 +24,21 @@ const isDev = process.env.NODE_ENV === 'development';
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 
 // Configure auto-updater
-autoUpdater.checkForUpdatesAndNotify();
 autoUpdater.autoDownload = false; // We want to ask user first
+autoUpdater.autoInstallOnAppQuit = false;
+
+// Set update server URL explicitly  
+if (!isDev) {
+  autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'johngibsondesign', 
+    repo: 'arena-assist',
+    private: false
+  });
+}
+
+console.log('Auto-updater configured for GitHub releases');
+console.log('App version:', app.getVersion());
 
 // Auto-updater event handlers
 autoUpdater.on('checking-for-update', () => {
@@ -59,6 +72,11 @@ autoUpdater.on('update-not-available', () => {
 
 autoUpdater.on('error', (err) => {
   console.error('Auto-updater error:', err);
+  
+  // Send error to renderer if possible
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-error', err.message);
+  }
 });
 
 autoUpdater.on('download-progress', (progressObj) => {
@@ -258,18 +276,46 @@ function createTray(): void {
     {
       label: 'Check for Updates',
       click: async () => {
-        if (!isDev) {
-          try {
-            await autoUpdater.checkForUpdates();
-          } catch (error) {
-            dialog.showErrorBox('Update Check Failed', 'Could not check for updates. Please try again later.');
-          }
-        } else {
+        if (isDev) {
           dialog.showMessageBox(mainWindow!, {
             type: 'info',
             title: 'Development Mode',
             message: 'Auto-updates are disabled in development mode.'
           });
+          return;
+        }
+
+        try {
+          console.log('Tray update check initiated...');
+          
+          const updateCheckResult = await autoUpdater.checkForUpdates();
+          console.log('Tray update check result:', updateCheckResult);
+          
+          if (updateCheckResult?.updateInfo) {
+            dialog.showMessageBox(mainWindow!, {
+              type: 'info',
+              title: 'Update Available',
+              message: `A new version (v${updateCheckResult.updateInfo.version}) is available!`,
+              detail: 'Would you like to download and install it now?',
+              buttons: ['Download & Install', 'Later'],
+              defaultId: 0,
+              cancelId: 1
+            }).then((result) => {
+              if (result.response === 0) {
+                autoUpdater.downloadUpdate();
+              }
+            });
+          } else {
+            dialog.showMessageBox(mainWindow!, {
+              type: 'info',
+              title: 'No Updates',
+              message: 'You are already using the latest version!',
+              buttons: ['OK']
+            });
+          }
+        } catch (error) {
+          console.error('Tray update check failed:', error);
+          dialog.showErrorBox('Update Check Failed', `Could not check for updates: ${error.message}`);
         }
       }
     },
@@ -413,23 +459,50 @@ ipcMain.handle('window-is-maximized', () => {
 
 // Auto-updater IPC handlers
 ipcMain.handle('check-for-updates', async () => {
-  if (!isDev) {
-    try {
-      console.log('Checking for updates...');
-      const updateCheckResult = await autoUpdater.checkForUpdates();
-      console.log('Update check result:', updateCheckResult);
-      return updateCheckResult;
-    } catch (error) {
-      console.error('Manual update check failed:', error);
-      return { error: error.message };
-    }
-  } else {
-    // In development, simulate an update check
+  if (isDev) {
     console.log('Development mode - simulating update check');
     return { 
       updateInfo: null, 
       isDev: true, 
-      message: 'Update checking disabled in development mode' 
+      message: 'Update checking disabled in development mode',
+      currentVersion: app.getVersion()
+    };
+  }
+
+  try {
+    console.log('Manual update check initiated...');
+    console.log('Current app version:', app.getVersion());
+    
+    // Force check for updates
+    autoUpdater.autoDownload = false;
+    const updateCheckResult = await autoUpdater.checkForUpdates();
+    
+    console.log('Update check result:', updateCheckResult);
+    
+    if (updateCheckResult?.updateInfo) {
+      console.log('Update available:', updateCheckResult.updateInfo.version);
+      return {
+        updateInfo: updateCheckResult.updateInfo,
+        currentVersion: app.getVersion(),
+        hasUpdate: true,
+        message: `Update available: v${updateCheckResult.updateInfo.version}`
+      };
+    } else {
+      console.log('No updates available');
+      return {
+        updateInfo: null,
+        currentVersion: app.getVersion(),
+        hasUpdate: false,
+        message: 'You are using the latest version'
+      };
+    }
+  } catch (error) {
+    console.error('Manual update check failed:', error);
+    return { 
+      error: error.message,
+      currentVersion: app.getVersion(),
+      hasUpdate: false,
+      message: `Update check failed: ${error.message}`
     };
   }
 });

@@ -12,6 +12,7 @@ interface GameState {
   puuid: string | null;
   region: string | null;
   gamePhase: string | null; // 'None', 'Lobby', 'ChampSelect', 'InGame'
+  gameData?: any; // Full game data from LCU API
 }
 
 interface AppState {
